@@ -126,58 +126,51 @@ import matplotlib.patches as mpatches
 def plot_random_forest(x_train, y_train, x_test, y_test):
     B_values = [0.1, 0.3, 1, 3, 9]
     alpha_values = [1 / 2, 1]
-    accuracy_values_rf = []
-    accuracy_values_lr = []
+    NUM_TRIALS = 1/0
 
-    for alpha in alpha_values:
-        accuracy_alpha_rf = []
-        accuracy_alpha_lr = []
+    fig, axs = plt.subplots(len(alpha_values))
+
+    for alpha_index, alpha in enumerate(alpha_values):
+        accuracy_values_rf = []
+        accuracy_values_lr = []
+        std_dev_rf = []
+        std_dev_lr = []
+
         for B in B_values:
-            # Add Tsybakov noise to the training labels
-            noisy_y_train = add_noise(x_train, y_train, alpha, B)
+            acc_rf = []
+            acc_lr = []
+            for num_trial in range(NUM_TRIALS):
+                # Add Tsybakov noise to the training labels
+                noisy_y_train = add_noise(x_train, y_train, alpha, B)
 
-            # Train and evaluate Random Forest
-            rf_model = RandomForestClassifier(max_depth=20, random_state=0)
-            rf_model.fit(x_train, noisy_y_train)
-            y_test_pred_rf = rf_model.predict(x_test)
-            accuracy_rf = accuracy_score(y_test, y_test_pred_rf)
-            accuracy_alpha_rf.append(accuracy_rf)
+                # Train and evaluate Random Forest
+                rf_model = RandomForestClassifier(max_depth=20, random_state=0)
+                rf_model.fit(x_train, noisy_y_train)
+                y_test_pred_rf = rf_model.predict(x_test)
+                accuracy_rf = accuracy_score(y_test, y_test_pred_rf)
+                acc_rf.append(accuracy_rf)
 
-            # Train and evaluate Logistic Regression
-            lr_model = LogisticRegression(random_state=0)
-            lr_model.fit(x_train, noisy_y_train)
-            y_test_pred_lr = lr_model.predict(x_test)
-            accuracy_lr = accuracy_score(y_test, y_test_pred_lr)
-            accuracy_alpha_lr.append(accuracy_lr)
+                # Train and evaluate Logistic Regression
+                lr_model = LogisticRegression(random_state=0)
+                lr_model.fit(x_train, noisy_y_train)
+                y_test_pred_lr = lr_model.predict(x_test)
+                accuracy_lr = accuracy_score(y_test, y_test_pred_lr)
+                acc_lr.append(accuracy_lr)
 
-        accuracy_values_rf.append(accuracy_alpha_rf)
-        accuracy_values_lr.append(accuracy_alpha_lr)
+            accuracy_values_rf.append(np.mean(acc_rf))
+            accuracy_values_lr.append(np.mean(acc_lr))
+            std_dev_rf.append(np.std(acc_rf))
+            std_dev_lr.append(np.std(acc_lr))
 
-    # Reshape the accuracy arrays
-    accuracy_values_rf = np.array(accuracy_values_rf).reshape(len(alpha_values), len(B_values))
-    accuracy_values_lr = np.array(accuracy_values_lr).reshape(len(alpha_values), len(B_values))
-    B_values, alpha_values = np.meshgrid(B_values, alpha_values)
+        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o')
+        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o')
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+        axs[alpha_index].set_xlabel('B')
+        axs[alpha_index].set_ylabel('Accuracy')
+        axs[alpha_index].set_title(f'Alpha = {alpha}')
+        axs[alpha_index].legend()
 
-    # Plot Random Forest accuracy values
-    ax.plot_surface(B_values, alpha_values, accuracy_values_rf, color='blue', alpha=0.7)
-
-    # Plot Logistic Regression accuracy values
-    ax.plot_surface(B_values, alpha_values, accuracy_values_lr, color='red', alpha=0.7)
-
-    ax.set_xlabel('B')
-    ax.set_ylabel('Alpha')
-    ax.set_zlabel('Accuracy')
-
-    # Create proxy artists for legend
-    proxy_rf = mpatches.Patch(color='blue', label='Random Forest')
-    proxy_lr = mpatches.Patch(color='red', label='Logistic Regression')
-
-    # Add a legend
-    ax.legend(handles=[proxy_rf, proxy_lr])
-
+    plt.tight_layout()
     plt.show()
 
 
