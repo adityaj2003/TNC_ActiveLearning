@@ -60,8 +60,6 @@ def L(x,y,lam,w):
     prods = -np.matmul(x,w)*y
     return np.average(0.5*prods + (0.5 - lam)*np.abs(prods))
 
-algos = ['rf','lreg','our','rcn']
-algo_ids = {algos[i]:i for i in range(len(algos))}
 
 def corrupt(eta, xs, ys):
     def flip(p, x):
@@ -95,7 +93,7 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
 
 
-x_train, x_test, y_train, y_test = mixture_gauss(2, 1000)
+x_train, x_test, y_train, y_test = mixture_gauss(2, 1250)
 
 
 
@@ -120,50 +118,100 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 
-import matplotlib.patches as mpatches
+# def plot_TNC_baselines(x_train, y_train, x_test, y_test):
+#     B_values = [0.1, 0.3, 1, 3, 9]
+#     alpha_values = [1 / 2, 1]
+#     NUM_TRIALS = 50
+#
+#     fig, axs = plt.subplots(len(alpha_values))
+#
+#     for alpha_index, alpha in enumerate(alpha_values):
+#         accuracy_values_rf = []
+#         accuracy_values_lr = []
+#         std_dev_rf = []
+#         std_dev_lr = []
+#
+#         for B in B_values:
+#             acc_rf = []
+#             acc_lr = []
+#             for num_trial in range(NUM_TRIALS):
+#                 noisy_y_train = add_noise(x_train, y_train, alpha, B)
+#
+#                 # Train and evaluate Random Forest
+#                 rf_model = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=2, random_state=0)
+#                 rf_model.fit(x_train, noisy_y_train)
+#                 y_test_pred_rf = rf_model.predict(x_test)
+#                 accuracy_rf = accuracy_score(y_test, y_test_pred_rf)
+#                 acc_rf.append(accuracy_rf)
+#
+#                 # Train and evaluate Logistic Regression
+#                 lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
+#                              penalty='l2', solver='liblinear',
+#                              fit_intercept=False,
+#                              tol=0.1)
+#                 lr_model.fit(x_train, noisy_y_train)
+#                 y_test_pred_lr = lr_model.predict(x_test)
+#                 accuracy_lr = accuracy_score(y_test, y_test_pred_lr)
+#                 acc_lr.append(accuracy_lr)
+#
+#             accuracy_values_rf.append(np.mean(acc_rf))
+#             accuracy_values_lr.append(np.mean(acc_lr))
+#             std_dev_rf.append(np.std(acc_rf))
+#             std_dev_lr.append(np.std(acc_lr))
+#
+#         axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o')
+#         axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o')
+#
+#         axs[alpha_index].set_xlabel('B')
+#         axs[alpha_index].set_ylabel('Accuracy')
+#         axs[alpha_index].set_title(f'Alpha = {alpha}')
+#         axs[alpha_index].legend()
+#
+#     plt.tight_layout()
+#     plt.show()
 
 
-def plot_random_forest(x_train, y_train, x_test, y_test):
+
+colors = ['red', 'blue']
+algos = ['rf', 'lreg']
+def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     B_values = [0.1, 0.3, 1, 3, 9]
     alpha_values = [1 / 2, 1]
-    NUM_TRIALS = 1/0
+    NUM_TRIALS = 50
 
     fig, axs = plt.subplots(len(alpha_values))
 
     for alpha_index, alpha in enumerate(alpha_values):
-        accuracy_values_rf = []
-        accuracy_values_lr = []
-        std_dev_rf = []
-        std_dev_lr = []
+        accuracies = []
+        std_devs = []
 
         for B in B_values:
-            acc_rf = []
-            acc_lr = []
+            acc = [[], []]
+
             for num_trial in range(NUM_TRIALS):
-                # Add Tsybakov noise to the training labels
                 noisy_y_train = add_noise(x_train, y_train, alpha, B)
 
                 # Train and evaluate Random Forest
-                rf_model = RandomForestClassifier(max_depth=20, random_state=0)
+                rf_model = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=2, random_state=0)
                 rf_model.fit(x_train, noisy_y_train)
                 y_test_pred_rf = rf_model.predict(x_test)
-                accuracy_rf = accuracy_score(y_test, y_test_pred_rf)
-                acc_rf.append(accuracy_rf)
+                acc[0].append(accuracy_score(y_test, y_test_pred_rf))
 
                 # Train and evaluate Logistic Regression
-                lr_model = LogisticRegression(random_state=0)
+                lr_model = LogisticRegression(C=50 / 1000, max_iter=200,
+                                              penalty='l2', solver='liblinear',
+                                              fit_intercept=False,
+                                              tol=0.1)
                 lr_model.fit(x_train, noisy_y_train)
                 y_test_pred_lr = lr_model.predict(x_test)
-                accuracy_lr = accuracy_score(y_test, y_test_pred_lr)
-                acc_lr.append(accuracy_lr)
+                acc[1].append(accuracy_score(y_test, y_test_pred_lr))
 
-            accuracy_values_rf.append(np.mean(acc_rf))
-            accuracy_values_lr.append(np.mean(acc_lr))
-            std_dev_rf.append(np.std(acc_rf))
-            std_dev_lr.append(np.std(acc_lr))
+            accuracies.append([np.mean(acc[0]), np.mean(acc[1])])
+            std_devs.append([np.std(acc[0]), np.std(acc[1])])
 
-        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o')
-        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o')
+        for i, algo in enumerate(algos):
+            axs[alpha_index].errorbar(B_values, [x[i] for x in accuracies], yerr=[x[i] for x in std_devs], label=algo,
+                                      color=colors[i])
 
         axs[alpha_index].set_xlabel('B')
         axs[alpha_index].set_ylabel('Accuracy')
@@ -173,5 +221,4 @@ def plot_random_forest(x_train, y_train, x_test, y_test):
     plt.tight_layout()
     plt.show()
 
-
-plot_random_forest(x_train, y_train, x_test, y_test)
+plot_TNC_baselines(x_train, y_train, x_test, y_test)
