@@ -259,7 +259,7 @@ def phi_prime_of_sigma_t(w, x):
     print("w/l1NormOfW:", i)
     return abs(-1 * (math.e**(i/sigma))/sigma*(math.e**(i/sigma)+1)**2)
 
-def active_fo(w):
+def ACTIVE_FO(w):
     index = np.random.randint(x_train.shape[0])  # Pick a random index
     x = sample_x_from_DX(index)
     print(sigma)
@@ -280,20 +280,15 @@ def active_fo(w):
 
 
 def ACTIVE_PSGD(N, beta):
-    # Initialize w1 randomly on the unit l2-ball
-    w = np.random.randn(d)
-    w = w / np.linalg.norm(w)
-    print("w", w)
-    # For each step
-    for i in range(math.ceil(N)):
-        # Calculate gi using ACTIVE-FO function (needs to be defined separately)
-        gi = active_fo(w)
-
-        # Update vi and wi
-        vi = w - beta * gi
-        w = vi / np.linalg.norm(vi)
-
-    # Return a random w from the history
+    # initialize w1 randomly on the unit l2-ball in R^d
+    w1 = np.random.normal(size=d)
+    w1 = w1 / np.linalg.norm(w1)
+    w = np.zeros((N+1, d))
+    w[0] = w1
+    for i in range(1, N+1):
+        gi = ACTIVE_FO(w[i-1])
+        vi = w[i-1] - beta*gi
+        w[i] = vi / np.linalg.norm(vi)
     R = np.random.randint(N)
     return w[R]
 
@@ -302,5 +297,5 @@ beta = rho**2 * sigma**2 / d
 
 # Run the loop S times
 for s in range(math.ceil(S)):
-    ws = ACTIVE_PSGD(N, beta)
+    ws = ACTIVE_PSGD(math.ceil(N), beta)
 print(ws)
