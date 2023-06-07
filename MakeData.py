@@ -1,5 +1,4 @@
 import sys
-from sklearn.svm import SVC
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.pipeline import make_pipeline
@@ -20,6 +19,18 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
+import argparse
+
+# Create the parser
+import argparse
+
+# Create the parser
+parser = argparse.ArgumentParser()
+
+# parser.add_argument('integer_input1', type=int, default=1, help='First input integer')
+# parser.add_argument('integer_input2', type=int, default=2, help='Second input integer')
+
+args = parser.parse_args()
 
 np.random.seed(0)
 
@@ -28,6 +39,7 @@ etas = np.linspace(0.05,0.45,9)
 epss = [0.05]
 NUM_ITERS = 2000
 NUM_FLIPS = 1
+TRAIN_SET_SIZE = 1000
 
 def leakyrelu(lam,z):
     if z > 0:
@@ -95,9 +107,9 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
 
 d = 2
-x_train, x_test, y_train, y_test = mixture_gauss(d, 1000)
-y_train = add_noise(x_train, y_train, 0.5, 1)
-
+x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+y_train = add_noise(x_train, y_train_orig, 0.5, 1)
+y_test = add_noise(x_test, y_test_orig, 0.5, 1)
 
 x1_values = x_train[:, 0]
 x2_values = x_train[:, 1]
@@ -124,6 +136,8 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     B_values = [0.1, 0.3, 1, 3, 9]
     alpha_values = [1 / 2, 1]
     NUM_TRIALS = 50
+    default_marker_size = 6  # this is the default size in matplotlib for 'o' marker
+    half_size = default_marker_size / 2  # setting size to half
 
     fig, axs = plt.subplots(len(alpha_values))
 
@@ -162,8 +176,8 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
             std_dev_rf.append(np.std(acc_rf))
             std_dev_lr.append(np.std(acc_lr))
 
-        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o')
-        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o')
+        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o', markersize=half_size)
+        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o', markersize=half_size)
 
         axs[alpha_index].set_xlabel('B')
         axs[alpha_index].set_ylabel('Accuracy')
@@ -173,76 +187,28 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     plt.tight_layout()
     plt.show()
 
-#
-#
-# colors = ['red', 'blue']
-# algos = ['rf', 'lreg']
-# def plot_TNC_baselines(x_train, y_train, x_test, y_test):
-#     B_values = [0.1, 0.3, 1, 3, 9]
-#     alpha_values = [1 / 2, 1]
-#     NUM_TRIALS = 50
-#
-#     fig, axs = plt.subplots(len(alpha_values))
-#
-#     for alpha_index, alpha in enumerate(alpha_values):
-#         accuracies = []
-#         std_devs = []
-#
-#         for B in B_values:
-#             acc = [[], []]
-#
-#             for num_trial in range(NUM_TRIALS):
-#                 noisy_y_train = add_noise(x_train, y_train, alpha, B)
-#
-#                 # Train and evaluate Random Forest
-#                 rf_model = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=2, random_state=0)
-#                 rf_model.fit(x_train, noisy_y_train)
-#                 y_test_pred_rf = rf_model.predict(x_test)
-#                 acc[0].append(accuracy_score(y_test, y_test_pred_rf))
-#
-#                 # Train and evaluate Logistic Regression
-#                 lr_model = LogisticRegression(C=50 / 1000, max_iter=200,
-#                                               penalty='l2', solver='liblinear',
-#                                               fit_intercept=False,
-#                                               tol=0.1)
-#                 lr_model.fit(x_train, noisy_y_train)
-#                 y_test_pred_lr = lr_model.predict(x_test)
-#                 acc[1].append(accuracy_score(y_test, y_test_pred_lr))
-#
-#             accuracies.append([np.mean(acc[0]), np.mean(acc[1])])
-#             std_devs.append([np.std(acc[0]), np.std(acc[1])])
-#
-#         for i, algo in enumerate(algos):
-#             axs[alpha_index].errorbar(B_values, [x[i] for x in accuracies], yerr=[x[i] for x in std_devs], label=algo,
-#                                       color=colors[i])
-#
-#         axs[alpha_index].set_xlabel('B')
-#         axs[alpha_index].set_ylabel('Accuracy')
-#         axs[alpha_index].set_title(f'Alpha = {alpha}')
-#         axs[alpha_index].legend()
-#
-#     plt.tight_layout()
-#     plt.show()
+
+#plot_TNC_baselines(x_train, y_train_orig, x_test, y_test_orig)
 
 
-# plot_TNC_baselines(x_train, y_train, x_test, y_test)
-
-# Given values
 epsilon = 0.1
 delta = 0.1
-A = 1
+A = 2
 alpha = 0.5
-
+label_used_array = [False]*TRAIN_SET_SIZE
+num_labels_accessed = 0
+index = 0
 # Constants for Big O and Big Theta
-O_constant = 1
-Theta_constant = 1
+O_constant = 50
+Theta_constant = 10
 
 
-theta = math.ceil(O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2))
+theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
 print("theta:", theta)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
 print("sigma:", sigma)
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
+print("rho:", rho)
 S = np.log(6 / delta)
 
 
@@ -254,28 +220,34 @@ def query_labeling_oracle(index):
     return y_train[index]
 
 def phi_prime_of_sigma_t(w, x):
-    print(x)
-    i = np.dot(w, x) / np.linalg.norm(w, 1)
-    print("w/l1NormOfW:", i)
-    return abs(-1 * (math.e**(i/sigma))/sigma*(math.e**(i/sigma)+1)**2)
+    # print("e power", math.e**x)
+    i = np.dot(w, x) / np.linalg.norm(w)
+    # print("w/l1NormOfW:", i)
+    return abs(np.exp(-i/sigma)/(sigma*(1+np.exp(-i/sigma))**2))
 
 def ACTIVE_FO(w):
-    index = np.random.randint(x_train.shape[0])  # Pick a random index
+    global index
+    global TRAIN_SET_SIZE
+    #Implement a streaming algo where I draw the next sample every time!!!!!!
+    if (label_used_array[index]):
+        return np.zeros_like(w)
     x = sample_x_from_DX(index)
-    print(sigma)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)  # query probability
-    print(q_wx)
-    # Draw Z from Bernoulli(q(w, x))
+    # print(q_wx)
     Z = bernoulli.rvs(q_wx)
 
     if Z == 1:
-        # Query the labeling oracle on example x
+        global num_labels_accessed
+        num_labels_accessed += 1
         y = query_labeling_oracle(index)
-
         w_norm = np.linalg.norm(w)
         h_wxy = -1/sigma * y * (x/w_norm**2 - np.dot(w, x) * w / w_norm**3)
+        index = (index+1)%TRAIN_SET_SIZE
+        #Assert that h_wxy and w are orthogonal!!!!
+        assert np.isclose(np.dot(h_wxy, w), 0)
         return h_wxy
     else:
+        index = (index+1)%TRAIN_SET_SIZE
         return np.zeros_like(w)
 
 
@@ -283,7 +255,8 @@ def ACTIVE_PSGD(N, beta):
     # initialize w1 randomly on the unit l2-ball in R^d
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
-    w = np.zeros((N+1, d))
+    print("N", N)
+    w = [None]*(N+1)
     w[0] = w1
     for i in range(1, N+1):
         gi = ACTIVE_FO(w[i-1])
@@ -295,7 +268,62 @@ def ACTIVE_PSGD(N, beta):
 N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
 
-# Run the loop S times
-for s in range(math.ceil(S)):
-    ws = ACTIVE_PSGD(math.ceil(N), beta)
+
+ws = ACTIVE_PSGD(math.ceil(N), beta)
+
 print(ws)
+
+predictions = np.dot(x_test, ws)
+
+for i in range(0,len(predictions)):
+    if predictions[i] < 0.0:
+        predictions[i] = -1
+    else:
+        predictions[i] = 1
+
+# Calculate accuracy
+test_accuracy = np.mean(predictions == y_test)
+
+lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
+                             penalty='l2', solver='liblinear',
+                             fit_intercept=False,
+                             tol=0.1)
+lr_model.fit(x_train, y_train)
+y_test_pred_lr = lr_model.predict(x_test)
+
+lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
+
+print("LR Accuracy:", lr_accuracy)
+print("ACTIVE_PSGD:", test_accuracy)
+print("Labels Accessed:", num_labels_accessed)
+print("% Labels Used:", num_labels_accessed/N)
+
+N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number of points
+
+# Initialize an array to hold the corresponding accuracies
+accuracies = []
+
+# Calculate the accuracy for each N value
+for N in N_values:
+    beta = rho**2 * sigma**2 / d
+    ws = ACTIVE_PSGD(math.ceil(N), beta)
+    predictions = np.dot(x_test, ws)
+    for i in range(0, len(predictions)):
+        if predictions[i] < 0.0:
+            predictions[i] = -1
+        else:
+            predictions[i] = 1
+
+    # Calculate accuracy and append it to the accuracies array
+    test_accuracy = np.mean(predictions == y_test)
+    print(test_accuracy)
+    accuracies.append(test_accuracy)
+
+# Plot N vs accuracy
+plt.figure(figsize=(10, 5))
+plt.plot(N_values, accuracies, label="Test Accuracy")
+plt.xlabel("N")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.title("N vs Accuracy")
+plt.show()
