@@ -132,12 +132,13 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     B_values = [0.1, 0.3, 1, 3, 9]
     alpha_values = [1 / 2, 1]
     NUM_TRIALS = 50
-    default_marker_size = 6  # this is the default size in matplotlib for 'o' marker
-    half_size = default_marker_size / 2  # setting size to half
+    default_marker_size = 6
+    half_size = default_marker_size / 2
 
     fig, axs = plt.subplots(len(alpha_values))
 
@@ -147,13 +148,22 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
         std_dev_rf = []
         std_dev_lr = []
 
+        # add accuracy lists for true y_test
+        accuracy_values_rf_true = []
+        accuracy_values_lr_true = []
+
         for B in B_values:
             acc_rf = []
             acc_lr = []
+
+            # add accuracy lists for true y_test
+            acc_rf_true = []
+            acc_lr_true = []
+
             for num_trial in range(NUM_TRIALS):
                 noisy_y_train = add_noise(x_train, y_train, alpha, B)
 
-                # Train and evaluate Random Forest
+                # Random Forest
                 rf_model = RandomForestClassifier(n_estimators=100, max_depth=None, min_samples_split=2, random_state=0)
                 rf_model.fit(x_train, noisy_y_train)
                 y_test_pred_rf = rf_model.predict(x_test)
@@ -161,23 +171,41 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
                 accuracy_rf = accuracy_score(noisy_y_test, y_test_pred_rf)
                 acc_rf.append(accuracy_rf)
 
-                # Train and evaluate Logistic Regression
-                lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
-                             penalty='l2', solver='liblinear',
-                             fit_intercept=False,
-                             tol=0.1)
+                # accuracy on true y_test for Random Forest
+                accuracy_rf_true = accuracy_score(y_test, y_test_pred_rf)
+                acc_rf_true.append(accuracy_rf_true)
+
+                # Logistic Regression
+                lr_model = LogisticRegression(C=50 / 1000, max_iter=200,
+                                              penalty='l2', solver='liblinear',
+                                              fit_intercept=False,
+                                              tol=0.1)
                 lr_model.fit(x_train, noisy_y_train)
                 y_test_pred_lr = lr_model.predict(x_test)
                 accuracy_lr = accuracy_score(noisy_y_test, y_test_pred_lr)
                 acc_lr.append(accuracy_lr)
+
+                # accuracy on true y_test for Logistic Regression
+                accuracy_lr_true = accuracy_score(y_test, y_test_pred_lr)
+                acc_lr_true.append(accuracy_lr_true)
 
             accuracy_values_rf.append(np.mean(acc_rf))
             accuracy_values_lr.append(np.mean(acc_lr))
             std_dev_rf.append(np.std(acc_rf))
             std_dev_lr.append(np.std(acc_lr))
 
-        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='Random Forest', fmt='-o', markersize=half_size)
-        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='Logistic Regression', fmt='-o', markersize=half_size)
+            # append mean accuracy on true y_test
+            accuracy_values_rf_true.append(np.mean(acc_rf_true))
+            accuracy_values_lr_true.append(np.mean(acc_lr_true))
+
+        axs[alpha_index].errorbar(B_values, accuracy_values_rf, yerr=std_dev_rf, label='RF', fmt='-o',
+                                  markersize=half_size)
+        axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='LR', fmt='-o',
+                                  markersize=half_size)
+
+        # plot accuracy on true y_test with dashed lines
+        axs[alpha_index].plot(B_values, accuracy_values_rf_true, 'r--', label='RF True')
+        axs[alpha_index].plot(B_values, accuracy_values_lr_true, 'b--', label='LR True')
 
         axs[alpha_index].set_xlabel('B')
         axs[alpha_index].set_ylabel('Accuracy')
@@ -242,6 +270,7 @@ def ACTIVE_FO(w):
         y = query_labeling_oracle(index)
         w_norm = np.linalg.norm(w)
         h_wxy = -1/sigma * y * (x/w_norm**2 - np.dot(w, x) * w / w_norm**3)
+        label_used_array[index] = True
         index = (index+1)%TRAIN_SET_SIZE
         #Assert that h_wxy and w are orthogonal!!!!
         assert np.isclose(np.dot(h_wxy, w), 0)
@@ -305,6 +334,7 @@ accuracies = []
 
 # Calculate the accuracy for each N value
 for N in N_values:
+    label_used_array = [False]*TRAIN_SET_SIZE
     beta = rho**2 * sigma**2 / d
     ws = ACTIVE_PSGD(math.ceil(N), beta)
     predictions = np.dot(x_test, ws)
@@ -315,7 +345,7 @@ for N in N_values:
             predictions[i] = 1
 
     # Calculate accuracy and append it to the accuracies array
-    test_accuracy = np.mean(predictions == y_test)
+    test_accuracy = accuracy_score(predictions, y_test_orig)
     print(test_accuracy)
     accuracies.append(test_accuracy)
 
