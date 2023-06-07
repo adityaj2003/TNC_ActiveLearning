@@ -216,19 +216,19 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     plt.show()
 
 
-#plot_TNC_baselines(x_train, y_train_orig, x_test, y_test_orig)
+plot_TNC_baselines(x_train, y_train_orig, x_test, y_test_orig)
 
 
 epsilon = 0.1
 delta = 0.1
-A = 2
+A = 3
 alpha = 0.5
 label_used_array = [False]*TRAIN_SET_SIZE
 num_labels_accessed = 0
 index = 0
 # Constants for Big O and Big Theta
 O_constant = 50
-Theta_constant = 10
+Theta_constant = 50
 
 
 theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
@@ -248,9 +248,7 @@ def query_labeling_oracle(index):
     return y_train[index]
 
 def phi_prime_of_sigma_t(w, x):
-    # print("e power", math.e**x)
-    i = np.dot(w, x) / np.linalg.norm(w)
-    # print("w/l1NormOfW:", i)
+    i = np.dot(w, x) / np.linalg.norm(w, 1)
     return abs(np.exp(-i/sigma)/(sigma*(1+np.exp(-i/sigma))**2))
 
 def ACTIVE_FO(w):
@@ -261,7 +259,7 @@ def ACTIVE_FO(w):
         return np.zeros_like(w)
     x = sample_x_from_DX(index)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)  # query probability
-    # print(q_wx)
+    # print("q_wx:",q_wx)
     Z = bernoulli.rvs(q_wx)
 
     if Z == 1:
@@ -297,63 +295,69 @@ def ACTIVE_PSGD(N, beta):
 N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
 
+#
+# ws = ACTIVE_PSGD(math.ceil(N), beta)
+#
+# print(ws)
+#
+# predictions = np.dot(x_test, ws)
+#
+# for i in range(0,len(predictions)):
+#     if predictions[i] < 0.0:
+#         predictions[i] = -1
+#     else:
+#         predictions[i] = 1
+#
+# # Calculate accuracy
+# test_accuracy = np.mean(predictions == y_test)
+#
+# lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
+#                              penalty='l2', solver='liblinear',
+#                              fit_intercept=False,
+#                              tol=0.1)
+# lr_model.fit(x_train, y_train)
+# y_test_pred_lr = lr_model.predict(x_test)
+#
+# lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
+#
+# print("LR Accuracy:", lr_accuracy)
+# print("ACTIVE_PSGD:", test_accuracy)
+# print("Labels Accessed:", num_labels_accessed)
+# print("% Labels Used:", num_labels_accessed/N)
 
-ws = ACTIVE_PSGD(math.ceil(N), beta)
+# N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number of points
+#
+# # Initialize an array to hold the corresponding accuracies
+# accuracies = []
+#
+# # Calculate the accuracy for each N value
+# for N in N_values:
+#     label_used_array = [False]*TRAIN_SET_SIZE
+#     index = 0
+#     num_labels_accessed = 0
+#     ws = ACTIVE_PSGD(math.ceil(N), beta)
+#     predictions = np.dot(x_test, ws)
+#     for i in range(0, len(predictions)):
+#         if predictions[i] < 0.0:
+#             predictions[i] = -1
+#         else:
+#             predictions[i] = 1
+#
+#     # Calculate accuracy and append it to the accuracies array
+#     test_accuracy = accuracy_score(predictions, y_test_orig)
+#     print(test_accuracy)
+#     if (test_accuracy < 0.5):
+#         print(ws)
+#     print("Labels Accessed:", num_labels_accessed)
+#     accuracies.append(test_accuracy)
+#
+# # Plot N vs accuracy
+# plt.figure(figsize=(10, 5))
+# plt.plot(N_values, accuracies, label="Test Accuracy")
+# plt.xlabel("N")
+# plt.ylabel("Accuracy")
+# plt.legend()
+# plt.title("N vs Accuracy")
+# plt.show()
 
-print(ws)
 
-predictions = np.dot(x_test, ws)
-
-for i in range(0,len(predictions)):
-    if predictions[i] < 0.0:
-        predictions[i] = -1
-    else:
-        predictions[i] = 1
-
-# Calculate accuracy
-test_accuracy = np.mean(predictions == y_test)
-
-lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
-                             penalty='l2', solver='liblinear',
-                             fit_intercept=False,
-                             tol=0.1)
-lr_model.fit(x_train, y_train)
-y_test_pred_lr = lr_model.predict(x_test)
-
-lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
-
-print("LR Accuracy:", lr_accuracy)
-print("ACTIVE_PSGD:", test_accuracy)
-print("Labels Accessed:", num_labels_accessed)
-print("% Labels Used:", num_labels_accessed/N)
-
-N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number of points
-
-# Initialize an array to hold the corresponding accuracies
-accuracies = []
-
-# Calculate the accuracy for each N value
-for N in N_values:
-    label_used_array = [False]*TRAIN_SET_SIZE
-    beta = rho**2 * sigma**2 / d
-    ws = ACTIVE_PSGD(math.ceil(N), beta)
-    predictions = np.dot(x_test, ws)
-    for i in range(0, len(predictions)):
-        if predictions[i] < 0.0:
-            predictions[i] = -1
-        else:
-            predictions[i] = 1
-
-    # Calculate accuracy and append it to the accuracies array
-    test_accuracy = accuracy_score(predictions, y_test_orig)
-    print(test_accuracy)
-    accuracies.append(test_accuracy)
-
-# Plot N vs accuracy
-plt.figure(figsize=(10, 5))
-plt.plot(N_values, accuracies, label="Test Accuracy")
-plt.xlabel("N")
-plt.ylabel("Accuracy")
-plt.legend()
-plt.title("N vs Accuracy")
-plt.show()
