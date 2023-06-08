@@ -25,10 +25,12 @@ import argparse
 # Create the parser
 parser = argparse.ArgumentParser()
 
-# parser.add_argument('integer_input1', type=int, default=1, help='First input integer')
-# parser.add_argument('integer_input2', type=int, default=2, help='Second input integer')
+parser.add_argument('--integer_input1', type=float, default=0.5, help='First input integer')
+parser.add_argument('--integer_input2', type=int, default=1, help='Second input integer')
 
 args = parser.parse_args()
+
+print(args.integer_input1)
 
 np.random.seed(0)
 
@@ -37,7 +39,7 @@ etas = np.linspace(0.05,0.45,9)
 epss = [0.05]
 NUM_ITERS = 2000
 NUM_FLIPS = 1
-TRAIN_SET_SIZE = 1000
+TRAIN_SET_SIZE = 100000
 
 
 def mixture_gauss(d,N,frac=0.25):
@@ -98,8 +100,8 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
 d = 2
 x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
-y_train = add_noise(x_train, y_train_orig, 0.5, 1)
-y_test = add_noise(x_test, y_test_orig, 0.5, 1)
+y_train = add_noise(x_train, y_train_orig, args.integer_input1, args.integer_input2)
+y_test = add_noise(x_test, y_test_orig, args.integer_input1, args.integer_input2)
 
 np.save('x_train.npy', x_train)
 np.save('x_test.npy', x_test)

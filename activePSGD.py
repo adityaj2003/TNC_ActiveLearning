@@ -19,6 +19,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
+TRAIN_SET_SIZE = 100000
+d = 2
 
 x_train = np.load('x_train.npy')
 x_test = np.load('x_test.npy')
@@ -37,15 +39,12 @@ num_labels_accessed = 0
 index = 0
 # Constants for Big O and Big Theta
 O_constant = 50
-Theta_constant = 50
+Theta_constant = 10
 
 
 theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
-print("theta:", theta)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
-print("sigma:", sigma)
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
-print("rho:", rho)
 S = np.log(6 / delta)
 
 
@@ -65,10 +64,10 @@ def ACTIVE_FO(w):
     global TRAIN_SET_SIZE
     #Implement a streaming algo where I draw the next sample every time!!!!!!
     if (label_used_array[index]):
+        index = (index + 1) % TRAIN_SET_SIZE
         return np.zeros_like(w)
     x = sample_x_from_DX(index)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)  # query probability
-    # print("q_wx:",q_wx)
     Z = bernoulli.rvs(q_wx)
 
     if Z == 1:
@@ -99,40 +98,75 @@ def ACTIVE_PSGD(N, beta):
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
     R = np.random.randint(N)
+    print("R:", R)
     return w[R]
 
 N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
 
 
-ws = ACTIVE_PSGD(math.ceil(N), beta)
+def TNC_learning(epsilon, delta):
+    A = 3
+    alpha = 0.5
+    label_used_array = [False] * TRAIN_SET_SIZE
+    num_labels_accessed = 0
+    index = 0
+    # Constants for Big O and Big Theta
+    O_constant = 50
+    Theta_constant = 50
+    theta = O_constant * ((1 / np.log2(1 / epsilon)) ** 2) * (epsilon / 2)
+    sigma = Theta_constant * (1 / A) ** ((1 - alpha) / (3 * alpha - 1)) * theta ** ((2 * alpha) / (3 * alpha - 1))
+    rho = Theta_constant * (1 / A) ** ((2 * (1 - alpha)) / (3 * alpha - 1)) * theta ** (
+                (2 * (1 - alpha)) / (3 * alpha - 1))
+    S = np.log(6 / delta)
+    w_s = []
+    for s in range(S):
+        N = ceil(d / (sigma ** 2 * rho ** 4))
+        beta = rho ** 2 * sigma ** 2 / d
+        w = ACTIVE_PSGD(N, beta)
+        w_s.append(w)
 
-print(ws)
+    g_s = []
+    for s in range(S):
+        g = ACTIVE_FO(w_s[s])
+        g_s.append(g)
+    g_bar = np.mean(g_s, axis=0)
+    s_star = np.argmin(np.linalg.norm(g_bar))
+    w_tilde = w_s[s_star]
 
-predictions = np.dot(x_test, ws)
 
-for i in range(0,len(predictions)):
-    if predictions[i] < 0.0:
-        predictions[i] = -1
-    else:
-        predictions[i] = 1
 
-# Calculate accuracy
-test_accuracy = np.mean(predictions == y_test)
 
-lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
-                             penalty='l2', solver='liblinear',
-                             fit_intercept=False,
-                             tol=0.1)
-lr_model.fit(x_train, y_train)
-y_test_pred_lr = lr_model.predict(x_test)
 
-lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
-
-print("LR Accuracy:", lr_accuracy)
-print("ACTIVE_PSGD:", test_accuracy)
-print("Labels Accessed:", num_labels_accessed)
-print("% Labels Used:", num_labels_accessed/N)
+#
+# ws = ACTIVE_PSGD(math.ceil(N), beta)
+#
+# print(ws)
+#
+# predictions = np.dot(x_test, ws)
+#
+# for i in range(0,len(predictions)):
+#     if predictions[i] < 0.0:
+#         predictions[i] = -1
+#     else:
+#         predictions[i] = 1
+#
+# # Calculate accuracy
+# test_accuracy = np.mean(predictions == y_test)
+#
+# lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
+#                              penalty='l2', solver='liblinear',
+#                              fit_intercept=False,
+#                              tol=0.1)
+# lr_model.fit(x_train, y_train)
+# y_test_pred_lr = lr_model.predict(x_test)
+#
+# lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
+#
+# print("LR Accuracy:", lr_accuracy)
+# print("ACTIVE_PSGD:", test_accuracy)
+# print("Labels Accessed:", num_labels_accessed)
+# print("% Labels Used:", num_labels_accessed/N)
 
 N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number of points
 
@@ -167,4 +201,6 @@ plt.xlabel("N")
 plt.ylabel("Accuracy")
 plt.legend()
 plt.title("N vs Accuracy")
+plt.text(0.01, 0.95, f'Theta constant: {Theta_constant}', transform=plt.gca().transAxes)
+plt.text(0.01, 0.90, f'O constant: {O_constant}', transform=plt.gca().transAxes)
 plt.show()

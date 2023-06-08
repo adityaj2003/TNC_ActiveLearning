@@ -28,6 +28,21 @@ y_test_orig = np.load('y_test_orig.npy')
 y_train = np.load('y_train.npy')
 y_test = np.load('y_test.npy')
 
+def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
+    """
+    Add noise to the labels according to the Tsybakov noise condition.
+    """
+    # Compute the decision boundary
+    h_w_x = np.dot(features, w_star)
+
+    # Compute the probability of flipping each label
+    p_flip = 0.5 - np.minimum(1/2,B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    # Flip the labels with probability p_flip
+    flip = (np.random.rand(len(labels)) < p_flip)
+    noisy_labels = labels.copy()
+    noisy_labels[flip] = -noisy_labels[flip]
+
+    return noisy_labels
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
