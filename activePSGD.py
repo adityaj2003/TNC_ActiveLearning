@@ -172,7 +172,7 @@ N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number
 
 # Initialize an array to hold the corresponding accuracies
 accuracies = []
-
+num_labels_used = []
 # Calculate the accuracy for each N value
 for N in N_values:
     label_used_array = [False]*TRAIN_SET_SIZE
@@ -192,15 +192,26 @@ for N in N_values:
     if (test_accuracy < 0.5):
         print(ws)
     print("Labels Accessed:", num_labels_accessed)
+    num_labels_used.append(num_labels_accessed)
     accuracies.append(test_accuracy)
 
-# Plot N vs accuracy
+num_labels_used = np.array(num_labels_used)
+accuracies = np.array(accuracies)
+
+# you can sort the num_labels_used and get the indices of the sorted array
+sorted_indices = np.argsort(num_labels_used)
+
+# use these indices to sort both the num_labels_used and accuracies
+sorted_num_labels_used = num_labels_used[sorted_indices]
+sorted_accuracies = accuracies[sorted_indices]
+
+# now you can plot
 plt.figure(figsize=(10, 5))
-plt.plot(N_values, accuracies, label="Test Accuracy")
-plt.xlabel("N")
+plt.plot(sorted_num_labels_used, sorted_accuracies, label="Test Accuracy")
+plt.xlabel("Number of Labels used")
 plt.ylabel("Accuracy")
 plt.legend()
-plt.title("N vs Accuracy")
+plt.title("Number of Labels used vs Accuracy")
 plt.text(0.01, 0.95, f'Theta constant: {Theta_constant}', transform=plt.gca().transAxes)
 plt.text(0.01, 0.90, f'O constant: {O_constant}', transform=plt.gca().transAxes)
 plt.show()
