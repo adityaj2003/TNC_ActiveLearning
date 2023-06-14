@@ -1,6 +1,4 @@
-<h1> Code for "Efficient Active Learning Halfspaces with Tsybakov Noise: A
-Non-convex Optimization Approach"</h1>
+<h1> Code for active learning halfspaces via nonconvex optimization</h1>
 
-This is the script for reproducing TNC data and the algorithm mentioned in the
-paper "Efficient Active Learning Halfspaces with Tsybakov Noise: A Non-convex Optimization Approach"
+This is the script for producing data that satisfies Tsybakov noise condition and the algorithm for active learning halfspaces via nonconvex optimization
 
