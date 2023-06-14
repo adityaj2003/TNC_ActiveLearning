@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy.random import multivariate_normal
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn import datasets
@@ -19,18 +20,19 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
+import scipy.stats
 import argparse
 
 
 # Create the parser
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--integer_input1', type=float, default=0.5, help='First input integer')
-parser.add_argument('--integer_input2', type=int, default=1, help='Second input integer')
+parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
+parser.add_argument('--B', type=float, default=1.0, help='Second input integer')
 
 args = parser.parse_args()
 
-print(args.integer_input1)
+print(args.alpha)
 
 np.random.seed(0)
 
@@ -40,45 +42,38 @@ epss = [0.05]
 NUM_ITERS = 2000
 NUM_FLIPS = 1
 TRAIN_SET_SIZE = 100000
-
-
-def mixture_gauss(d,N,frac=0.25):
-    total = int(N*(frac+1))
-    cov1 = np.eye(d)
-    cov2 = np.eye(d)
-    cov2[0,0] = 8.
-    cov2[0,1] = 0.1
-    cov2[1,0] = 0.1
-    cov2[1,1] = 0.0024
-    vecs = np.zeros((total,d))
+d=2
+cov1 = np.eye(d)
+cov2 = np.eye(d)
+cov2[0,0] = 8.
+cov2[0,1] = 0.1
+cov2[1,0] = 0.1
+cov2[1,1] = 0.0024
+def mixture_gauss(d, N, frac=0.25):
+    total = int(N * (frac + 1))
+    vecs = np.zeros((total, d))
     for i in range(total):
         if np.random.uniform() > 0.5:
-            vecs[i,:] = np.random.multivariate_normal([0]*d,cov1)
+            vecs[i, :] = np.random.multivariate_normal([0]*d, cov1)
         else:
-            vecs[i,:] = np.random.multivariate_normal([0]*d,cov2)
-    x_train = vecs[:N,:]
-    x_test = vecs[N:,:]
-    y_train = (vecs[:N,0]>0).astype(int)*2 - 1
-    y_test = (vecs[N:,0]>0).astype(int)*2 - 1
-    return x_train, x_test, y_train, y_test
+            vecs[i, :] = np.random.multivariate_normal([0]*d, cov2)
 
-def L(x,y,lam,w):
-    prods = -np.matmul(x,w)*y
-    return np.average(0.5*prods + (0.5 - lam)*np.abs(prods))
+    # Define split sizes
+    N_train = int(0.8 * N)
+    N_val = int(0.1 * N)
+    N_test = N - N_train - N_val
 
+    # Create datasets
+    x_train = vecs[:N_train, :]
+    x_val = vecs[N_train:N_train+N_val, :]
+    x_test = vecs[N_train+N_val:, :]
+    
+    y_train = (vecs[:N_train, 0] > 0).astype(int) * 2 - 1
+    y_val = (vecs[N_train:N_train+N_val, 0] > 0).astype(int) * 2 - 1
+    y_test = (vecs[N_train+N_val:, 0] > 0).astype(int) * 2 - 1
 
-def corrupt(eta, xs, ys):
-    def flip(p, x):
-        if np.random.random() < p:
-            return -x
-        else:
-            return x
+    return x_train, x_val, x_test, y_train, y_val, y_test
 
-    noisy_ys = np.array(ys)
-    for i in range(len(ys)):
-        if xs[i, 1] > 0.3:
-            noisy_ys[i] = flip(eta, ys[i])
-    return noisy_ys
 
 
 def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
@@ -99,10 +94,13 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
 
 d = 2
-x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
-y_train = add_noise(x_train, y_train_orig, args.integer_input1, args.integer_input2)
-y_test = add_noise(x_test, y_test_orig, args.integer_input1, args.integer_input2)
-
+x_train,x_val, x_test, y_train_orig, y_val_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
+y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
+y_val = add_noise(x_val, y_val_orig, args.alpha, args.B)
+np.save('x_val.npy', x_val)
+np.save('y_val.npy', y_val)
+np.save('y_val_orig.npy', y_val_orig)
 np.save('x_train.npy', x_train)
 np.save('x_test.npy', x_test)
 np.save('y_train_orig.npy', y_train_orig)
@@ -123,11 +121,23 @@ negative_indices = y_train == -1
 # plt.show()
 
 
+prior1 = 0.5 
+prior2 = 0.5
+def bayes_optimal_classifier(x,B,alpha,w_star=np.array([1, 0])):
+    prediction = None
+    if (x[0] > 0):
+        prediction = 1
+    else:
+        prediction = -1
+    h_w_x = np.dot(x, w_star)
+    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    if (np.random.rand() < p_flip):
+        prediction = -prediction
+    return prediction
+    
+    
+y_pred = np.array([bayes_optimal_classifier(x, args.alpha, args.B) for x in x_test])
 
-
-
-
-
-
-
-
+# Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print('Accuracy of Bayes Optimal Classifier:', accuracy)

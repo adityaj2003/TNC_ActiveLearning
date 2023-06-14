@@ -19,17 +19,20 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
-TRAIN_SET_SIZE = 100000
-d = 2
+
 
 x_train = np.load('x_train.npy')
+x_val = np.load('x_val.npy')
 x_test = np.load('x_test.npy')
 y_train_orig = np.load('y_train_orig.npy')
 y_test_orig = np.load('y_test_orig.npy')
 y_train = np.load('y_train.npy')
 y_test = np.load('y_test.npy')
+y_val = np.load('y_val.npy')
+y_val_orig = np.load('y_val_orig.npy')
 
-
+TRAIN_SET_SIZE = len(x_train)
+d = 2
 epsilon = 0.1
 delta = 0.1
 A = 3
@@ -90,7 +93,7 @@ def ACTIVE_PSGD(N, beta):
     # initialize w1 randomly on the unit l2-ball in R^d
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
-    print("N", N)
+    print("w1", w1)
     w = [None]*(N+1)
     w[0] = w1
     for i in range(1, N+1):
@@ -98,14 +101,14 @@ def ACTIVE_PSGD(N, beta):
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
     R = np.random.randint(N)
-    print("R:", R)
+    print("wR",w[R])
     return w[R]
 
 N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
 
 
-def TNC_learning(epsilon, delta):
+def TNC_learning(epsilon, delta,N):
     A = 3
     alpha = 0.5
     label_used_array = [False] * TRAIN_SET_SIZE
@@ -120,20 +123,36 @@ def TNC_learning(epsilon, delta):
                 (2 * (1 - alpha)) / (3 * alpha - 1))
     S = np.log(6 / delta)
     w_s = []
-    for s in range(S):
-        N = ceil(d / (sigma ** 2 * rho ** 4))
+    for s in range(math.ceil(S)):
         beta = rho ** 2 * sigma ** 2 / d
         w = ACTIVE_PSGD(N, beta)
         w_s.append(w)
 
+    M1 = 100 
+
     g_s = []
-    for s in range(S):
-        g = ACTIVE_FO(w_s[s])
-        g_s.append(g)
-    g_bar = np.mean(g_s, axis=0)
-    s_star = np.argmin(np.linalg.norm(g_bar))
+    for s in range(math.ceil(S)):
+        g_s_i = []
+        for _ in range(M1):
+            g_s_i.append(ACTIVE_FO(w_s[s]))
+        g_s.append(np.mean(g_s_i, axis=0)) 
+
+    s_star = np.argmin(np.linalg.norm(g_s, axis=1))
     w_tilde = w_s[s_star]
 
+    errors = []
+    for w in [w_tilde, -w_tilde]:
+        error = 0
+        for i in range(len(x_val)):
+            x_i = x_val[i]
+            y_i = y_val[i]
+            if np.sign(np.dot(w, x_i)) != y_i:
+                error += 1
+        errors.append(error / len(x_val))
+
+    w_hat = [w_tilde, -w_tilde][np.argmin(errors)]
+
+    return w_hat
 
 
 
@@ -168,9 +187,7 @@ def TNC_learning(epsilon, delta):
 # print("Labels Accessed:", num_labels_accessed)
 # print("% Labels Used:", num_labels_accessed/N)
 
-N_values = np.linspace(1000, 100000, num=100)  # change num to adjust the number of points
-
-# Initialize an array to hold the corresponding accuracies
+N_values = np.linspace(100, 100000, num=100) 
 accuracies = []
 num_labels_used = []
 # Calculate the accuracy for each N value
@@ -178,15 +195,13 @@ for N in N_values:
     label_used_array = [False]*TRAIN_SET_SIZE
     index = 0
     num_labels_accessed = 0
-    ws = ACTIVE_PSGD(math.ceil(N), beta)
+    ws = TNC_learning(epsilon=0.1, delta=0.1, N=int(N))
     predictions = np.dot(x_test, ws)
     for i in range(0, len(predictions)):
         if predictions[i] < 0.0:
             predictions[i] = -1
         else:
             predictions[i] = 1
-
-    # Calculate accuracy and append it to the accuracies array
     test_accuracy = accuracy_score(predictions, y_test)
     print(test_accuracy)
     if (test_accuracy < 0.5):
@@ -198,16 +213,29 @@ for N in N_values:
 num_labels_used = np.array(num_labels_used)
 accuracies = np.array(accuracies)
 
-# you can sort the num_labels_used and get the indices of the sorted array
 sorted_indices = np.argsort(num_labels_used)
 
-# use these indices to sort both the num_labels_used and accuracies
 sorted_num_labels_used = num_labels_used[sorted_indices]
 sorted_accuracies = accuracies[sorted_indices]
+prior1 = 0.5 
+prior2 = 0.5
+def bayes_optimal_classifier(x,B,alpha,w_star=np.array([1, 0])):
+    h_w_x = np.dot(x, w_star)
+    if x[0]>0:
+        prediction = 1
+    else:
+        prediction = -1
+    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    if (np.random.rand() < p_flip):
+        prediction = -prediction
+    return prediction
 
+y_pred = np.array([bayes_optimal_classifier(x, 0.3, 0.5) for x in x_test])
+bayes_optimal_accuracy = accuracy_score(y_test, y_pred)
 # now you can plot
 plt.figure(figsize=(10, 5))
 plt.plot(sorted_num_labels_used, sorted_accuracies, label="Test Accuracy")
+plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', label='Bayes Optimal Accuracy')
 plt.xlabel("Number of Labels used")
 plt.ylabel("Accuracy")
 plt.legend()
