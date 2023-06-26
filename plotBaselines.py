@@ -20,12 +20,7 @@ from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
 
-x_train = np.load('x_train.npy')
-x_test = np.load('x_test.npy')
-y_train_orig = np.load('y_train_orig.npy')
-y_test_orig = np.load('y_test_orig.npy')
-y_train = np.load('y_train.npy')
-y_test = np.load('y_test.npy') 
+
 
 TRAIN_SET_SIZE = 1000
 d=2
@@ -54,9 +49,9 @@ def mixture_gauss(d, N, frac=0.25):
     x_val = vecs[N_train:N_train+N_val, :]
     x_test = vecs[N_train+N_val:, :]
     
-    y_train = (vecs[:N_train, 0] > 0).astype(int) * 2 - 1
-    y_val = (vecs[N_train:N_train+N_val, 0] > 0).astype(int) * 2 - 1
-    y_test = (vecs[N_train+N_val:, 0] > 0).astype(int) * 2 - 1
+    y_train = (vecs[:N_train, 1] > 0).astype(int) * 2 - 1
+    y_val = (vecs[N_train:N_train+N_val, 1] > 0).astype(int) * 2 - 1
+    y_test = (vecs[N_train+N_val:, 1] > 0).astype(int) * 2 - 1
 
     return x_train, x_val, x_test, y_train, y_val, y_test
 
@@ -80,8 +75,14 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 
+x_train = np.load('x_train.npy')
+x_test = np.load('x_test.npy')
+y_train_orig = np.load('y_train_orig.npy')
+y_test_orig = np.load('y_test_orig.npy')
+y_train = np.load('y_train.npy')
+y_test = np.load('y_test.npy')
 
-# def plot_TNC_baselines():
+# def plot_TNC_baselines(x_train, y_train, x_test, y_test):
 #     B_values = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
 #     alpha_values = [1 / 2, 1]
 #     NUM_TRIALS = 50
@@ -107,17 +108,13 @@ import numpy as np
 #             acc_lr_true = []
 
 #             for num_trial in range(NUM_TRIALS):
-#                 x_train,x_val, x_test, y_train_orig, y_val_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
-#                 y_train = add_noise(x_train, y_train_orig, alpha, B)
-#                 y_test = add_noise(x_test, y_test_orig, alpha, B)
-#                 y_val = add_noise(x_val, y_val_orig, alpha, B)
-#                 noisy_y_train = add_noise(x_train, y_train, alpha, B)
+#                 noisy_y_train = add_noise(x_train, y_train_orig, alpha, B)
 
 #                 # Random Forest
 #                 rf_model = RandomForestClassifier(max_depth=5, random_state=0)
 #                 rf_model.fit(x_train, noisy_y_train)
 #                 y_test_pred_rf = rf_model.predict(x_test)
-#                 noisy_y_test = add_noise(x_test, y_test, alpha, B)
+#                 noisy_y_test = add_noise(x_test, y_test_orig, alpha, B)
 #                 accuracy_rf = accuracy_score(noisy_y_test, y_test_pred_rf)
 #                 acc_rf.append(accuracy_rf)
 
@@ -166,7 +163,8 @@ import numpy as np
 #     plt.tight_layout()
 #     plt.show()
 
-def plot_TNC_baselines(x_train, y_train, x_test, y_test):
+
+def plot_TNC_baselines():
     B_values = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
     alpha_values = [1 / 2, 1]
     NUM_TRIALS = 50
@@ -174,28 +172,22 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     half_size = default_marker_size / 2
 
     fig, axs = plt.subplots(len(alpha_values))
-
     for alpha_index, alpha in enumerate(alpha_values):
         accuracy_values_rf = []
         accuracy_values_lr = []
         std_dev_rf = []
         std_dev_lr = []
-
         accuracy_values_rf_true = []
         accuracy_values_lr_true = []
-
         for B in B_values:
             acc_rf = []
             acc_lr = []
-
             acc_rf_true = []
             acc_lr_true = []
-
-            noisy_y_train = add_noise(x_train, y_train, alpha, B)
-            noisy_y_test = add_noise(x_test, y_test, alpha, B)
-
             for num_trial in range(NUM_TRIALS):
-
+                x_train, x_val, x_test, y_train_orig, y_val_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+                noisy_y_train = add_noise(x_train, y_train_orig, alpha, B)
+                noisy_y_test = add_noise(x_test, y_test_orig, alpha, B)
                 # Random Forest
                 rf_model = RandomForestClassifier(max_depth=5, random_state=0)
                 rf_model.fit(x_train, noisy_y_train)
@@ -203,7 +195,7 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
                 accuracy_rf = accuracy_score(noisy_y_test, y_test_pred_rf)
                 acc_rf.append(accuracy_rf)
 
-                accuracy_rf_true = accuracy_score(y_test, y_test_pred_rf)
+                accuracy_rf_true = accuracy_score(y_test_orig, y_test_pred_rf)
                 acc_rf_true.append(accuracy_rf_true)
 
                 # Logistic Regression
@@ -214,7 +206,7 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
                 accuracy_lr = accuracy_score(noisy_y_test, y_test_pred_lr)
                 acc_lr.append(accuracy_lr)
 
-                accuracy_lr_true = accuracy_score(y_test, y_test_pred_lr)
+                accuracy_lr_true = accuracy_score(y_test_orig, y_test_pred_lr)
                 acc_lr_true.append(accuracy_lr_true)
 
             accuracy_values_rf.append(np.mean(acc_rf))
@@ -229,12 +221,8 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
                                   markersize=half_size)
         axs[alpha_index].errorbar(B_values, accuracy_values_lr, yerr=std_dev_lr, label='LR', fmt='-o',
                                   markersize=half_size)
-
-        # plot accuracy on true y_test with dashed lines
         axs[alpha_index].plot(B_values, accuracy_values_rf_true, 'r--', label='RF True')
         axs[alpha_index].plot(B_values, accuracy_values_lr_true, 'b--', label='LR True')
-
-        # annotate data points on graph with exact values
         for i, txt in enumerate(accuracy_values_rf):
             axs[alpha_index].annotate("{:.2f}".format(txt), (B_values[i], accuracy_values_rf[i]))
         for i, txt in enumerate(accuracy_values_lr):
@@ -248,5 +236,4 @@ def plot_TNC_baselines(x_train, y_train, x_test, y_test):
     plt.tight_layout()
     plt.show()
 
-
-plot_TNC_baselines(x_train, y_train_orig, x_test, y_test_orig)
+plot_TNC_baselines()

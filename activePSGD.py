@@ -19,6 +19,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
+import traceback
 
 
 x_train = np.load('x_train.npy')
@@ -35,22 +36,20 @@ TRAIN_SET_SIZE = len(x_train)
 d = 2
 epsilon = 0.1
 delta = 0.1
-A = 3
+A = 1
 alpha = 0.5
 label_used_array = [False]*TRAIN_SET_SIZE
 num_labels_accessed = 0
 index = 0
-# Constants for Big O and Big Theta
 O_constant = 50
 Theta_constant = 10
-
 
 theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
 S = np.log(6 / delta)
 
-
+print("sigma: ", sigma)
 def sample_x_from_DX(index):
     x = x_train[index, :]
     return x
@@ -59,18 +58,19 @@ def query_labeling_oracle(index):
     return y_train[index]
 
 def phi_prime_of_sigma_t(w, x):
-    i = np.dot(w, x) / np.linalg.norm(w, 1)
+    i = np.dot(w, x) / np.linalg.norm(w)
     return abs(np.exp(-i/sigma)/(sigma*(1+np.exp(-i/sigma))**2))
+
+
 
 def ACTIVE_FO(w):
     global index
     global TRAIN_SET_SIZE
-    #Implement a streaming algo where I draw the next sample every time!!!!!!
     if (label_used_array[index]):
         index = (index + 1) % TRAIN_SET_SIZE
         return np.zeros_like(w)
     x = sample_x_from_DX(index)
-    q_wx = sigma * phi_prime_of_sigma_t(w, x)  # query probability
+    q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
 
     if Z == 1:
@@ -81,37 +81,80 @@ def ACTIVE_FO(w):
         h_wxy = -1/sigma * y * (x/w_norm**2 - np.dot(w, x) * w / w_norm**3)
         label_used_array[index] = True
         index = (index+1)%TRAIN_SET_SIZE
-        #Assert that h_wxy and w are orthogonal!!!!
         assert np.isclose(np.dot(h_wxy, w), 0)
         return h_wxy
     else:
         index = (index+1)%TRAIN_SET_SIZE
         return np.zeros_like(w)
 
-
+iterate_accuracies_noisy = []
+iterate_accuracies = []
+iterate_labels_used = []
 def ACTIVE_PSGD(N, beta):
-    # initialize w1 randomly on the unit l2-ball in R^d
+    global num_labels_accessed
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
     print("w1", w1)
     w = [None]*(N+1)
     w[0] = w1
+    label_used_array = [False] * TRAIN_SET_SIZE
+    index = 0
     for i in range(1, N+1):
+        gi = ACTIVE_FO(w[i-1])
+        label_used_array[index] = True
+        vi = w[i-1] - beta*gi
+        w[i] = vi / np.linalg.norm(vi)
+        predictions = np.dot(x_test, w[i])
+        for i in range(0,len(predictions)):
+            if predictions[i] < 0.0:
+                predictions[i] = -1
+            else:
+                predictions[i] = 1
+        iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
+        iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
+        iterate_labels_used.append(num_labels_accessed)
+    R = np.random.randint(N)
+    print("wLast",w[-1])
+    return w[R]
+
+def TNC_Learning_New(epsilon, delta):
+    w1 = np.random.normal(size=d)
+    w1 = w1 / np.linalg.norm(w1)
+    w = [None]*(1000000)
+    w[0] = w1
+    print("w1", w1)
+    i = 1
+    global index
+    global label_used_array
+    global num_labels_accessed
+    index = 0
+    num_labels_accessed = 0
+    label_used_array = [False] * TRAIN_SET_SIZE
+    while num_labels_accessed < 1000:
         gi = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
-    R = np.random.randint(N)
-    print("wR",w[R])
-    return w[R]
+        predictions = np.dot(x_test, w[i])
+        for j in range(0,len(predictions)):
+            if predictions[j] < 0.0:
+                predictions[j] = -1
+            else:
+                predictions[j] = 1
+        iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
+        iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
+        iterate_labels_used.append(num_labels_accessed)
+        i += 1
+
+
+
+
+
 
 N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
-
+print("beta: ", beta)
 
 def TNC_learning(epsilon, delta,N):
-    A = 3
-    alpha = 0.5
-    label_used_array = [False] * TRAIN_SET_SIZE
     num_labels_accessed = 0
     index = 0
     # Constants for Big O and Big Theta
@@ -156,90 +199,88 @@ def TNC_learning(epsilon, delta,N):
 
 
 
+lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
+                             penalty='l2', solver='liblinear',
+                             fit_intercept=False,
+                             tol=0.1)
+lr_model.fit(x_train, y_train)
+y_test_pred_lr = lr_model.predict(x_test)
 
-#
-# ws = ACTIVE_PSGD(math.ceil(N), beta)
-#
-# print(ws)
-#
-# predictions = np.dot(x_test, ws)
-#
-# for i in range(0,len(predictions)):
-#     if predictions[i] < 0.0:
-#         predictions[i] = -1
-#     else:
-#         predictions[i] = 1
-#
-# # Calculate accuracy
-# test_accuracy = np.mean(predictions == y_test)
-#
-# lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
-#                              penalty='l2', solver='liblinear',
-#                              fit_intercept=False,
-#                              tol=0.1)
-# lr_model.fit(x_train, y_train)
-# y_test_pred_lr = lr_model.predict(x_test)
-#
-# lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
-#
-# print("LR Accuracy:", lr_accuracy)
-# print("ACTIVE_PSGD:", test_accuracy)
-# print("Labels Accessed:", num_labels_accessed)
-# print("% Labels Used:", num_labels_accessed/N)
+lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
 
-N_values = np.linspace(100, 100000, num=100) 
-accuracies = []
+
+# N_values = np.linspace(100, 2000, num=100) 
+num_sigmas = 8
+fig, axs = plt.subplots(num_sigmas, num_sigmas, figsize=(30,30))
 num_labels_used = []
-# Calculate the accuracy for each N value
-for N in N_values:
-    label_used_array = [False]*TRAIN_SET_SIZE
-    index = 0
-    num_labels_accessed = 0
-    ws = TNC_learning(epsilon=0.1, delta=0.1, N=int(N))
-    predictions = np.dot(x_test, ws)
-    for i in range(0, len(predictions)):
-        if predictions[i] < 0.0:
-            predictions[i] = -1
-        else:
-            predictions[i] = 1
-    test_accuracy = accuracy_score(predictions, y_test)
-    print(test_accuracy)
-    if (test_accuracy < 0.5):
-        print(ws)
-    print("Labels Accessed:", num_labels_accessed)
-    num_labels_used.append(num_labels_accessed)
-    accuracies.append(test_accuracy)
+sigmas = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
+betas = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
 
-num_labels_used = np.array(num_labels_used)
-accuracies = np.array(accuracies)
+for i, sigmaIterate in enumerate(sigmas):
+    accuracies = []
+    for l, betaIterate in enumerate(betas):
+        try:
+            sigma = sigmaIterate
+            beta = betaIterate
+            N = d / (sigma**2 * rho**4)
+            iterate_accuracies = []
+            iterate_labels_used = []
+            TNC_Learning_New(epsilon, delta)
+            axs[l,i].plot(iterate_labels_used, iterate_accuracies, label="Test Accuracy")
+            axs[l,i].set_title(f"Sigma = {sigma}, Beta = {beta}")
+            axs[l,i].set_xlabel("Beta")
+            axs[l,i].set_ylabel("Accuracy")
+        except:
+            traceback.print_exc()
 
-sorted_indices = np.argsort(num_labels_used)
+plt.tight_layout()
+plt.show()
 
-sorted_num_labels_used = num_labels_used[sorted_indices]
-sorted_accuracies = accuracies[sorted_indices]
-prior1 = 0.5 
-prior2 = 0.5
-def bayes_optimal_classifier(x,B,alpha,w_star=np.array([1, 0])):
-    h_w_x = np.dot(x, w_star)
-    if x[0]>0:
+
+
+# num_labels_used = np.array(num_labels_used)
+# accuracies = np.array(accuracies)
+
+
+# plt.figure(figsize=(10, 5))
+# plt.plot(num_labels_used, accuracies, label="Test Accuracy")
+# plt.xlabel("Number of Labels used")
+# plt.ylabel("Accuracy")
+# plt.legend()
+# plt.title("Number of Labels used vs Accuracy")
+# plt.text(0.01, 0.95, f'Theta constant: {Theta_constant}', transform=plt.gca().transAxes)
+# plt.text(0.01, 0.90, f'O constant: {O_constant}', transform=plt.gca().transAxes)
+# plt.show()
+
+
+def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
+    prediction = None
+    if (x[0] > 0):
         prediction = 1
     else:
         prediction = -1
+    h_w_x = np.dot(x, w_star)
     p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (np.random.rand() < p_flip):
+    if (p_flip > 0.5):
         prediction = -prediction
     return prediction
+    
+def plot_iterate_accuracies_active_psgd(alpha_value, B_value):
+    y_pred = np.array([bayes_optimal_classifier(x, alpha_value, B_value) for x in x_test])
 
-y_pred = np.array([bayes_optimal_classifier(x, 0.3, 0.5) for x in x_test])
-bayes_optimal_accuracy = accuracy_score(y_test, y_pred)
-# now you can plot
-plt.figure(figsize=(10, 5))
-plt.plot(sorted_num_labels_used, sorted_accuracies, label="Test Accuracy")
-plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', label='Bayes Optimal Accuracy')
-plt.xlabel("Number of Labels used")
-plt.ylabel("Accuracy")
-plt.legend()
-plt.title("Number of Labels used vs Accuracy")
-plt.text(0.01, 0.95, f'Theta constant: {Theta_constant}', transform=plt.gca().transAxes)
-plt.text(0.01, 0.90, f'O constant: {O_constant}', transform=plt.gca().transAxes)
-plt.show()
+    bayes_optimal_accuracy = accuracy_score(y_test, y_pred)
+
+    ws = ACTIVE_PSGD(math.ceil(10000), beta)
+    plt.figure(figsize=(10,6))
+
+    plt.plot(iterate_labels_used, iterate_accuracies_noisy, label='Noisy Accuracies', linestyle='-')
+    plt.plot(iterate_labels_used, iterate_accuracies, label='True Accuracies', linestyle=':')
+    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+                label=f'Bayes Optimal Classifier (alpha={alpha_value}, B={B_value})')
+    plt.xlabel('Labels Used')
+    plt.ylabel('Accuracy')
+    plt.title('Accuracy vs Labels Used')
+    plt.legend()
+    plt.show()
+
+

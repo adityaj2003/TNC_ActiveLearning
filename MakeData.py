@@ -28,7 +28,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
-parser.add_argument('--B', type=float, default=1.0, help='Second input integer')
+parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
 
 args = parser.parse_args()
 
@@ -36,11 +36,6 @@ print(args.alpha)
 
 np.random.seed(0)
 
-NUM_TRIALS = 50
-etas = np.linspace(0.05,0.45,9)
-epss = [0.05]
-NUM_ITERS = 2000
-NUM_FLIPS = 1
 TRAIN_SET_SIZE = 100000
 d=2
 cov1 = np.eye(d)
@@ -68,9 +63,9 @@ def mixture_gauss(d, N, frac=0.25):
     x_val = vecs[N_train:N_train+N_val, :]
     x_test = vecs[N_train+N_val:, :]
     
-    y_train = (vecs[:N_train, 0] > 0).astype(int) * 2 - 1
-    y_val = (vecs[N_train:N_train+N_val, 0] > 0).astype(int) * 2 - 1
-    y_test = (vecs[N_train+N_val:, 0] > 0).astype(int) * 2 - 1
+    y_train = (vecs[:N_train, 1] > 0).astype(int) * 2 - 1
+    y_val = (vecs[N_train:N_train+N_val, 1] > 0).astype(int) * 2 - 1
+    y_test = (vecs[N_train+N_val:, 1] > 0).astype(int) * 2 - 1
 
     return x_train, x_val, x_test, y_train, y_val, y_test
 
@@ -93,7 +88,6 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     return noisy_labels
 
 
-d = 2
 x_train,x_val, x_test, y_train_orig, y_val_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
 y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
 y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
@@ -120,24 +114,3 @@ negative_indices = y_train == -1
 # plt.legend()
 # plt.show()
 
-
-prior1 = 0.5 
-prior2 = 0.5
-def bayes_optimal_classifier(x,B,alpha,w_star=np.array([1, 0])):
-    prediction = None
-    if (x[0] > 0):
-        prediction = 1
-    else:
-        prediction = -1
-    h_w_x = np.dot(x, w_star)
-    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (np.random.rand() < p_flip):
-        prediction = -prediction
-    return prediction
-    
-    
-y_pred = np.array([bayes_optimal_classifier(x, args.alpha, args.B) for x in x_test])
-
-# Calculate accuracy
-accuracy = accuracy_score(y_test, y_pred)
-print('Accuracy of Bayes Optimal Classifier:', accuracy)
