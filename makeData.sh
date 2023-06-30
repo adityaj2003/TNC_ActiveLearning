@@ -1,27 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=MakeDataJob
-#SBATCH --output=MakeDataJob_%j.out
-#SBATCH --error=MakeDataJob_%j.err
-#SBATCH --time=1:00:00
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=2G
 
-# Load any necessary modules and activate your environment
-# module load python/3.7
-# source activate my_env
+# Define the list of sigma values and beta values
+sigma_values=(0.001 0.003 0.01 0.03 0.1 0.3 1 3)
+beta_values=(0.001 0.003 0.01 0.03 0.1 0.3 1 3)
 
-# Define your specific values for alpha and B
-alpha_values=(10 20 30 40 50)
-B_values=(5 15 25 35 45)
-
-# Loop over your two parameters
-for alpha in "${alpha_values[@]}"
-do
-    for B in "${B_values[@]}"
-    do
-        # Call your python script with the values as parameters
-        python MakeData.py $alpha $B
-    done
+# Loop through each combination of sigma and beta values
+for sigma in "${sigma_values[@]}"; do
+  for beta in "${beta_values[@]}"; do
+    # Submit a job to SLURM for each combination
+    sbatch --job-name=activePSGD_"$sigma"_"$beta" --output=activePSGD_"$sigma"_"$beta".out --wrap="python activePSGD.py --sigma $sigma --beta $beta"
+  done
 done
-

@@ -11,10 +11,8 @@ from sklearn.neighbors import KNeighborsClassifier
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-import json
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
-import torch
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
@@ -27,7 +25,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
 parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-
+parser.add_argument('--sigma', type=float, default=0.5, help='First input integer')
+parser.add_argument('--beta', type=float, default=0.3, help='Second input integer')
 args = parser.parse_args()
 
 
@@ -42,22 +41,23 @@ y_test = np.load('y_test.npy')
 y_val = np.load('y_val.npy')
 y_val_orig = np.load('y_val_orig.npy')
 
+print("x_train 1 val", x_train[0])
+
 TRAIN_SET_SIZE = len(x_train)
 d = 2
 epsilon = 0.1
 delta = 0.1
 A = 1
 alpha = 0.5
-label_used_array = [False]*TRAIN_SET_SIZE
 O_constant = 50
+num_labels_accessed = 0
 Theta_constant = 10
 
 theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
 S = np.log(6 / delta)
-
-print("sigma: ", sigma)
+print("sigma", sigma)
 
 def single_gauss(d):
     vecs = np.zeros((1, d))
@@ -68,25 +68,45 @@ def single_gauss(d):
 
     x_train = vecs
     y_train = (vecs[0, 1] > 0).astype(int) * 2 - 1
+    return x_train[0], y_train
 
-    return x_train, y_train
+d=2
+cov1 = np.eye(d)
+cov2 = np.eye(d)
+cov2[0,0] = 8.
+cov2[0,1] = 0.1
+cov2[1,0] = 0.1
+cov2[1,1] = 0.0024
+
+def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
+    h_w_x = np.dot(feature, w_star)
+    # Compute the probability of flipping the label
+    p_flip = 0.5 - min(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    flip = (np.random.rand() < p_flip)
+    noisy_label = label
+    if flip:
+        noisy_label = -noisy_label
+
+    return noisy_label
 
 def phi_prime_of_sigma_t(w, x):
     i = np.dot(w, x) / np.linalg.norm(w)
+    if i < 0.0:
+        i = -i
     return abs(np.exp(-i/sigma)/(sigma*(1+np.exp(-i/sigma))**2))
 
 
 
 def ACTIVE_FO(w):
     x,y = single_gauss(d)
+    y = add_noise_single(x, y, args.alpha, args.B)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
     if Z == 1:
-        num_labels_accessed += 1
         w_norm = np.linalg.norm(w)
         h_wxy = -1/sigma * y * (x/w_norm**2 - np.dot(w, x) * w / w_norm**3)
-        assert np.isclose(np.dot(h_wxy, w), 0), 1
-        return h_wxy
+        assert np.isclose(np.dot(h_wxy, w), 0)
+        return h_wxy, 1
     else:
         return np.zeros_like(w), 0
 
@@ -100,6 +120,7 @@ def ACTIVE_PSGD(N, beta):
     print("w1", w1)
     w = [None]*(N+1)
     w[0] = w1
+    global num_labels_accessed
     for i in range(1, N+1):
         gi = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
@@ -120,14 +141,12 @@ def ACTIVE_PSGD(N, beta):
 def TNC_Learning_New(epsilon, delta):
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
+    print("w1", w1)
     w = [None]*(1000000)
     w[0] = w1
-    print("w1", w1)
     i = 1
-    global num_labels_accessed
-    num_labels_accessed = 0
-    while li < 1000:
-        gi, li = ACTIVE_FO(w[i-1])
+    while i < 10000:
+        (gi, li) = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
         predictions = np.dot(x_test, w[i])
@@ -138,19 +157,13 @@ def TNC_Learning_New(epsilon, delta):
                 predictions[j] = 1
         iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
         iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
-        iterate_labels_used.append(num_labels_accessed)
+        iterate_labels_used.append(i)
         i += li
 
-#Store
 
-
-
-
-
-N = d / (sigma**2 * rho**4)
+# N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
-print("beta: ", beta)
-
+print("beta", beta)
 # def TNC_learning(epsilon, delta,N):
 #     num_labels_accessed = 0
 #     index = 0
@@ -194,44 +207,41 @@ print("beta: ", beta)
 
 #     return w_hat
 
+def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
+    prediction = None
+    if (np.dot(x,w_star) > 0.0):
+        prediction = 1
+    else:
+        prediction = -1
+    h_w_x = np.dot(x, w_star)
+    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    if (p_flip > 0.5):
+        prediction = -prediction
+    return prediction
 
 
-lr_model = LogisticRegression(C= 50 / 1000, max_iter = 200,
-                             penalty='l2', solver='liblinear',
-                             fit_intercept=False,
-                             tol=0.1)
-lr_model.fit(x_train, y_train)
-y_test_pred_lr = lr_model.predict(x_test)
-
-lr_accuracy = accuracy_score(y_test, y_test_pred_lr)
-
-
-# N_values = np.linspace(100, 2000, num=100) 
-num_sigmas = 8
-fig, axs = plt.subplots(num_sigmas, num_sigmas, figsize=(30,30))
-num_labels_used = []
-sigmas = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
-betas = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 3]
-
-for i, sigmaIterate in enumerate(sigmas):
-    accuracies = []
-    for l, betaIterate in enumerate(betas):
-        try:
-            sigma = sigmaIterate
-            beta = betaIterate
-            iterate_accuracies = []
-            iterate_labels_used = []
-            TNC_Learning_New(epsilon, delta)
-            #Make TNC_LEARNING_NEW return iterate_labels_used and iterate_accuracies instead of declaring them as global variables
-            axs[l,i].plot(iterate_labels_used, iterate_accuracies, label="Test Accuracy")
-            axs[l,i].set_title(f"Sigma = {sigma}, Beta = {beta}")
-            axs[l,i].set_xlabel("Beta")
-            axs[l,i].set_ylabel("Accuracy")
-        except:
-            traceback.print_exc()
+bayes_optimal_accuracies = [bayes_optimal_classifier(x,args.alpha,args.B) for x in x_test]
+bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
+plt.figure(figsize=(10,6))
+sigma = args.sigma
+beta = args.beta
+try:
+    iterate_accuracies = []
+    iterate_labels_used = []
+    TNC_Learning_New(epsilon, delta)
+    plt.plot(iterate_labels_used, iterate_accuracies_noisy, label='Noisy Accuracies', linestyle='-')
+    plt.plot(iterate_labels_used, iterate_accuracies, label='True Accuracies', linestyle=':')
+    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+                label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
+    plt.title(f"Sigma = {sigma}, Beta = {beta}")
+    plt.xlabel("Labels Accessed")
+    plt.ylabel("Accuracy")
+except:
+    traceback.print_exc()
 
 plt.tight_layout()
-plt.show()
+plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
+plt.close()  # Close the plot
 
 
 
@@ -250,17 +260,6 @@ plt.show()
 # plt.show()
 
 
-def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
-    prediction = None
-    if (x[0] > 0):
-        prediction = 1
-    else:
-        prediction = -1
-    h_w_x = np.dot(x, w_star)
-    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (p_flip > 0.5):
-        prediction = -prediction
-    return prediction
     
 def plot_iterate_accuracies_active_psgd(alpha_value, B_value):
     y_pred = np.array([bayes_optimal_classifier(x, alpha_value, B_value) for x in x_test])
