@@ -25,8 +25,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
 parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-parser.add_argument('--sigma', type=float, default=0.5, help='First input integer')
-parser.add_argument('--beta', type=float, default=0.3, help='Second input integer')
+parser.add_argument('--sigma', type=float, default=0.001, help='First input integer')
+parser.add_argument('--beta', type=float, default=0.001, help='Second input integer')
 args = parser.parse_args()
 
 
@@ -41,7 +41,7 @@ y_test = np.load('y_test.npy')
 y_val = np.load('y_val.npy')
 y_val_orig = np.load('y_val_orig.npy')
 
-print("x_train 1 val", x_train[0])
+
 
 TRAIN_SET_SIZE = len(x_train)
 d = 2
@@ -57,7 +57,7 @@ theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
 S = np.log(6 / delta)
-print("sigma", sigma)
+
 
 def single_gauss(d):
     vecs = np.zeros((1, d))
@@ -67,7 +67,7 @@ def single_gauss(d):
         vecs[0, :] = np.random.multivariate_normal([0]*d, cov2)
 
     x_train = vecs
-    y_train = (vecs[0, 1] > 0).astype(int) * 2 - 1
+    y_train = (vecs[0, 0] > 0).astype(int) * 2 - 1
     return x_train[0], y_train
 
 d=2
@@ -117,7 +117,6 @@ iterate_labels_used = []
 def ACTIVE_PSGD(N, beta):
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
-    print("w1", w1)
     w = [None]*(N+1)
     w[0] = w1
     global num_labels_accessed
@@ -135,18 +134,17 @@ def ACTIVE_PSGD(N, beta):
         iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
         iterate_labels_used.append(num_labels_accessed)
     R = np.random.randint(N)
-    print("wLast",w[-1])
     return w[R]
 
 def TNC_Learning_New(epsilon, delta):
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
-    print("w1", w1)
     w = [None]*(1000000)
     w[0] = w1
     i = 1
-    while i < 10000:
-        (gi, li) = ACTIVE_FO(w[i-1])
+    while i < 1000:
+        print(i)
+        gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
         predictions = np.dot(x_test, w[i])
@@ -163,7 +161,6 @@ def TNC_Learning_New(epsilon, delta):
 
 # N = d / (sigma**2 * rho**4)
 beta = rho**2 * sigma**2 / d
-print("beta", beta)
 # def TNC_learning(epsilon, delta,N):
 #     num_labels_accessed = 0
 #     index = 0
@@ -209,7 +206,7 @@ print("beta", beta)
 
 def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
     prediction = None
-    if (np.dot(x,w_star) > 0.0):
+    if (np.dot(x,w_star) > 0):
         prediction = 1
     else:
         prediction = -1
@@ -234,6 +231,7 @@ try:
     plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
                 label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
     plt.title(f"Sigma = {sigma}, Beta = {beta}")
+    print("max accuracy", max(iterate_accuracies))
     plt.xlabel("Labels Accessed")
     plt.ylabel("Accuracy")
 except:
@@ -241,7 +239,8 @@ except:
 
 plt.tight_layout()
 plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
-plt.close()  # Close the plot
+plt.close()
+print("plot should be saved")
 
 
 
