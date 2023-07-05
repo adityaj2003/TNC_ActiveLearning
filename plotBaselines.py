@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
-
+from MakeData.py import mixture_gauss
 
 
 TRAIN_SET_SIZE = 1000
@@ -31,31 +31,6 @@ cov2[0,1] = 0.1
 cov2[1,0] = 0.1
 cov2[1,1] = 0.0024
 
-#Just import this function from MakeData.py
-def mixture_gauss(d, N, frac=0.25):
-    total = int(N * (frac + 1))
-    vecs = np.zeros((total, d))
-    for i in range(total):
-        if np.random.uniform() > 0.5:
-            vecs[i, :] = np.random.multivariate_normal([0]*d, cov1)
-        else:
-            vecs[i, :] = np.random.multivariate_normal([0]*d, cov2)
-
-    # Define split sizes
-    N_train = int(0.8 * N)
-    N_val = int(0.1 * N)
-    N_test = N - N_train - N_val
-
-    # Create datasets
-    x_train = vecs[:N_train, :]
-    x_val = vecs[N_train:N_train+N_val, :]
-    x_test = vecs[N_train+N_val:, :]
-    
-    y_train = (vecs[:N_train, 1] > 0).astype(int) * 2 - 1
-    y_val = (vecs[N_train:N_train+N_val, 1] > 0).astype(int) * 2 - 1
-    y_test = (vecs[N_train+N_val:, 1] > 0).astype(int) * 2 - 1
-
-    return x_train, x_val, x_test, y_train, y_val, y_test
 
 def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     """
