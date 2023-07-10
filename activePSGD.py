@@ -32,14 +32,11 @@ args = parser.parse_args()
 
 
 x_train = np.load('x_train.npy')
-x_val = np.load('x_val.npy')
 x_test = np.load('x_test.npy')
 y_train_orig = np.load('y_train_orig.npy')
 y_test_orig = np.load('y_test_orig.npy')
 y_train = np.load('y_train.npy')
 y_test = np.load('y_test.npy')
-y_val = np.load('y_val.npy')
-y_val_orig = np.load('y_val_orig.npy')
 
 
 
@@ -231,7 +228,8 @@ try:
     plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
                 label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
     plt.title(f"Sigma = {sigma}, Beta = {beta}")
-    print("max accuracy", max(iterate_accuracies))
+    plt.legend(loc='lower right')
+    print("max accuracy", iterate_accuracies[-1])
     plt.xlabel("Labels Accessed")
     plt.ylabel("Accuracy")
 except:

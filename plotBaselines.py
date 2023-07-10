@@ -19,17 +19,30 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import math
-from MakeData.py import mixture_gauss
+
+def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
+    total = int(N * (frac + 1))
+    vecs = np.zeros((total, d))
+    for i in range(total):
+        if np.random.uniform() > 0.5:
+            vecs[i, :] = np.random.multivariate_normal([0]*d, cov1)
+        else:
+            vecs[i, :] = np.random.multivariate_normal([0]*d, cov2)
+
+    # Define split sizes
+    N_train = int(0.8 * N)
+
+    # Create datasets
+    x_train = vecs[:N_train, :]
+    x_test = vecs[N_train:, :]
+    
+    # Compute dot product with w_star to get labels
+    y_train = (np.dot(vecs[:N_train, :], w_star) > 0).astype(int) * 2 - 1
+    y_test = (np.dot(vecs[N_train:, :], w_star) > 0).astype(int) * 2 - 1
+
+    return x_train, x_test, y_train, y_test
 
 
-TRAIN_SET_SIZE = 1000
-d=2
-cov1 = np.eye(d)
-cov2 = np.eye(d)
-cov2[0,0] = 8.
-cov2[0,1] = 0.1
-cov2[1,0] = 0.1
-cov2[1,1] = 0.0024
 
 
 def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
@@ -48,6 +61,16 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
     return noisy_labels
 
+
+TRAIN_SET_SIZE = 1000
+d=2
+cov1 = np.eye(d)
+cov2 = np.eye(d)
+cov2[0,0] = 8.
+cov2[0,1] = 0.1
+cov2[1,0] = 0.1
+cov2[1,1] = 0.0024
+
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -60,6 +83,7 @@ y_train = np.load('y_train.npy')
 y_test = np.load('y_test.npy')
 
 
+w_star = np.array([1, 0])
 def plot_TNC_baselines():
     B_values = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
     alpha_values = [1 / 2, 1]
@@ -81,7 +105,7 @@ def plot_TNC_baselines():
             acc_rf_true = []
             acc_lr_true = []
             for num_trial in range(NUM_TRIALS):
-                x_train, x_val, x_test, y_train_orig, y_val_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+                x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
                 noisy_y_train = add_noise(x_train, y_train_orig, alpha, B)
                 noisy_y_test = add_noise(x_test, y_test_orig, alpha, B)
                 # Random Forest
@@ -126,7 +150,7 @@ def plot_TNC_baselines():
 
         axs[alpha_index].set_xlabel('B')
         axs[alpha_index].set_ylabel('Accuracy')
-        axs[alpha_index].set_title(f'Alpha = {alpha}')
+        axs[alpha_index].set_title(f'Alpha = {alpha}, w_star={w_star}')
         axs[alpha_index].legend()
 
     plt.tight_layout()
@@ -136,7 +160,7 @@ def plot_TNC_baselines():
 def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
     num_labels = []
-    for i in range(1, len(x_train)):
+    for i in range(1, 1000):
         try:
             clf = LogisticRegression(C=50 / 1000, max_iter=200, penalty='l2', solver='liblinear',
                                                 fit_intercept=False, tol=0.1)
@@ -153,12 +177,13 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
     plt.title('Logistic Regression Learning Curve')
-    plt.show()
+    plt.savefig('LR_learning_curve.png')
+    plt.close()
 
 def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
     num_labels = []
-    for i in range(1, len(x_train)):
+    for i in range(1, 1000):
         try:
             clf = RandomForestClassifier(max_depth=5, random_state=0)
             clf.fit(x_train[:i], y_train[:i])
@@ -174,7 +199,24 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
     plt.title('Random forest Learning Curve')
-    plt.show()
+    plt.savefig('RF_learning_curve.png')
+    plt.close()
 
-# plot_LR_learning_curve(x_train, y_train, x_test, y_test)
+
+# 
+
+def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
+    prediction = None
+    if (np.dot(x,w_star) > 0):
+        prediction = 1
+    else:
+        prediction = -1
+    h_w_x = np.dot(x, w_star)
+    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    if (p_flip > 0.5):
+        prediction = -prediction
+    return prediction
+
+plot_LR_learning_curve(x_train, y_train, x_test, y_test)
+
 plot_RF_learning_curve(x_train, y_train, x_test, y_test)

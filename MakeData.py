@@ -35,7 +35,7 @@ print(args.alpha)
 
 np.random.seed(0)
 
-TRAIN_SET_SIZE = 1000
+TRAIN_SET_SIZE = 100000
 d=2
 cov1 = np.eye(d)
 cov2 = np.eye(d)
@@ -64,7 +64,7 @@ def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
     y_train = (np.dot(vecs[:N_train, :], w_star) > 0).astype(int) * 2 - 1
     y_test = (np.dot(vecs[N_train:, :], w_star) > 0).astype(int) * 2 - 1
 
-    return x_train, x_val, x_test, y_train, y_val, y_test
+    return x_train, x_test, y_train, y_test
 
 
 
@@ -85,8 +85,9 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
     return noisy_labels
 
+w_star = np.array([1,0])
 
-x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)
 y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
 y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
 np.save('x_train.npy', x_train)
