@@ -156,6 +156,9 @@ def plot_TNC_baselines():
     plt.tight_layout()
     plt.show()
 
+
+bayes_optimal_accuracies = [bayes_optimal_classifier(x, 0.5, 0.3) for x in x_test]
+bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 # plot_TNC_baselines()
 def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
@@ -174,6 +177,8 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
 
     # Plot the learning curve
     plt.plot(num_labels, scores)
+    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+                label=f'Bayes Optimal Classifier (alpha={0.5}, B={0.3})')
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
     plt.title('Logistic Regression Learning Curve')
@@ -196,6 +201,8 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
 
     # Plot the learning curve
     plt.plot(num_labels, scores)
+    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+                label=f'Bayes Optimal Classifier (alpha={0.5}, B={0.3})')
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
     plt.title('Random forest Learning Curve')
@@ -203,7 +210,7 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     plt.close()
 
 
-# 
+
 
 def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
     prediction = None
