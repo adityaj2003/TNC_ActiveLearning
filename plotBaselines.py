@@ -157,6 +157,19 @@ def plot_TNC_baselines():
     plt.show()
 
 
+def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
+    prediction = None
+    if (np.dot(x,w_star) > 0):
+        prediction = 1
+    else:
+        prediction = -1
+    h_w_x = np.dot(x, w_star)
+    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    if (p_flip > 0.5):
+        prediction = -prediction
+    return prediction
+
+
 bayes_optimal_accuracies = [bayes_optimal_classifier(x, 0.5, 0.3) for x in x_test]
 bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 # plot_TNC_baselines()
@@ -209,20 +222,6 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     plt.savefig('RF_learning_curve.png')
     plt.close()
 
-
-
-
-def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
-    prediction = None
-    if (np.dot(x,w_star) > 0):
-        prediction = 1
-    else:
-        prediction = -1
-    h_w_x = np.dot(x, w_star)
-    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (p_flip > 0.5):
-        prediction = -prediction
-    return prediction
 
 plot_LR_learning_curve(x_train, y_train, x_test, y_test)
 
