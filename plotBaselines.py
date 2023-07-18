@@ -257,7 +257,8 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
         axs[idx].set_ylabel('Accuracy')
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig("Varying_C_LR_Learning_Curve.png")
+    plt.close()
 
 
 plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
