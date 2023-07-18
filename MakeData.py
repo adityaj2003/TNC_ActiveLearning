@@ -85,6 +85,29 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
     return noisy_labels
 
+
+def single_gauss(d):
+    vecs = np.zeros((1, d))
+    if np.random.uniform() > 0.5:
+        vecs[0, :] = np.random.multivariate_normal([0]*d, cov1)
+    else:
+        vecs[0, :] = np.random.multivariate_normal([0]*d, cov2)
+
+    x_train = vecs
+    y_train = (vecs[0, 0] > 0).astype(int) * 2 - 1
+    return x_train[0], y_train
+
+def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
+    h_w_x = np.dot(feature, w_star)
+    # Compute the probability of flipping the label
+    p_flip = 0.5 - min(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    flip = (np.random.rand() < p_flip)
+    noisy_label = label
+    if flip:
+        noisy_label = -noisy_label
+
+    return noisy_label
+
 w_star = np.array([1,0])
 
 x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)

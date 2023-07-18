@@ -223,6 +223,41 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     plt.close()
 
 
-plot_LR_learning_curve(x_train, y_train, x_test, y_test)
+# plot_LR_learning_curve(x_train, y_train, x_test, y_test)
 
-plot_RF_learning_curve(x_train, y_train, x_test, y_test)
+# plot_RF_learning_curve(x_train, y_train, x_test, y_test)
+
+
+def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
+    C_values = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100]
+    
+    fig, axs = plt.subplots(3, 3, figsize=(15, 15))
+    axs = axs.ravel() 
+
+    for idx, C in enumerate(C_values):
+        print(C)
+        scores = []
+        num_labels = []
+
+        for i in range(1, len(x_train) + 1):
+            try:
+                clf = LogisticRegression(C=C, max_iter=200, penalty='l2', solver='liblinear',
+                                         fit_intercept=False, tol=0.1)
+                clf.fit(x_train[:i], y_train[:i])
+                num_labels.append(i)
+                y_pred = clf.predict(x_test)
+                acc = accuracy_score(y_test, y_pred)
+                scores.append(acc)
+            except ValueError:
+                continue
+
+        axs[idx].plot(num_labels, scores)
+        axs[idx].set_title(f'Learning Curve for C={C}')
+        axs[idx].set_xlabel('Number of Training Instances')
+        axs[idx].set_ylabel('Accuracy')
+
+    plt.tight_layout()
+    plt.show()
+
+
+plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)

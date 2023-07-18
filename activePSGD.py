@@ -17,6 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
+from MakeData import add_noise_single, single_gauss, mixture_gauss, add_noise
 import math
 import traceback
 
@@ -31,16 +32,12 @@ args = parser.parse_args()
 
 
 
-x_train = np.load('x_train.npy')
 x_test = np.load('x_test.npy')
-y_train_orig = np.load('y_train_orig.npy')
 y_test_orig = np.load('y_test_orig.npy')
-y_train = np.load('y_train.npy')
 y_test = np.load('y_test.npy')
 
 
-
-TRAIN_SET_SIZE = len(x_train)
+TRAIN_SET_SIZE = 100000
 d = 2
 epsilon = 0.1
 delta = 0.1
@@ -56,18 +53,6 @@ rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha)
 S = np.log(6 / delta)
 
 
-def single_gauss(d):
-    vecs = np.zeros((1, d))
-    if np.random.uniform() > 0.5:
-        vecs[0, :] = np.random.multivariate_normal([0]*d, cov1)
-    else:
-        vecs[0, :] = np.random.multivariate_normal([0]*d, cov2)
-
-    x_train = vecs
-    y_train = (vecs[0, 0] > 0).astype(int) * 2 - 1
-    return x_train[0], y_train
-
-d=2
 cov1 = np.eye(d)
 cov2 = np.eye(d)
 cov2[0,0] = 8.
@@ -75,16 +60,6 @@ cov2[0,1] = 0.1
 cov2[1,0] = 0.1
 cov2[1,1] = 0.0024
 
-def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
-    h_w_x = np.dot(feature, w_star)
-    # Compute the probability of flipping the label
-    p_flip = 0.5 - min(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    flip = (np.random.rand() < p_flip)
-    noisy_label = label
-    if flip:
-        noisy_label = -noisy_label
-
-    return noisy_label
 
 def phi_prime_of_sigma_t(w, x):
     i = np.dot(w, x) / np.linalg.norm(w)
@@ -107,40 +82,19 @@ def ACTIVE_FO(w):
     else:
         return np.zeros_like(w), 0
 
-iterate_accuracies_noisy = []
-iterate_accuracies = []
-iterate_labels_used = []
-
-def ACTIVE_PSGD(N, beta):
-    w1 = np.random.normal(size=d)
-    w1 = w1 / np.linalg.norm(w1)
-    w = [None]*(N+1)
-    w[0] = w1
-    global num_labels_accessed
-    for i in range(1, N+1):
-        gi = ACTIVE_FO(w[i-1])
-        vi = w[i-1] - beta*gi
-        w[i] = vi / np.linalg.norm(vi)
-        predictions = np.dot(x_test, w[i])
-        for j in range(0,len(predictions)):
-            if predictions[j] < 0.0:
-                predictions[j] = -1
-            else:
-                predictions[j] = 1
-        iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
-        iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
-        iterate_labels_used.append(num_labels_accessed)
-    R = np.random.randint(N)
-    return w[R]
 
 def TNC_Learning_New(epsilon, delta):
+    iterate_accuracies_noisy = []
+    iterate_accuracies = []
+    iterate_labels_used = []
+    x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+    y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
     w = [None]*(1000000)
     w[0] = w1
     i = 1
     while i < 1000:
-        print(i)
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -150,10 +104,12 @@ def TNC_Learning_New(epsilon, delta):
                 predictions[j] = -1
             else:
                 predictions[j] = 1
-        iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
-        iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
-        iterate_labels_used.append(i)
+        if li == 1:
+            iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
+            iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
+            iterate_labels_used.append(i)
         i += li
+    return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
 
 
 # N = d / (sigma**2 * rho**4)
@@ -219,61 +175,45 @@ bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 plt.figure(figsize=(10,6))
 sigma = args.sigma
 beta = args.beta
-try:
-    iterate_accuracies = []
-    iterate_labels_used = []
-    TNC_Learning_New(epsilon, delta)
-    plt.plot(iterate_labels_used, iterate_accuracies_noisy, label='Noisy Accuracies', linestyle='-')
-    plt.plot(iterate_labels_used, iterate_accuracies, label='True Accuracies', linestyle=':')
-    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-                label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
-    plt.title(f"Sigma = {sigma}, Beta = {beta}")
-    plt.legend(loc='lower right')
-    print("max accuracy", iterate_accuracies[-1])
-    plt.xlabel("Labels Accessed")
-    plt.ylabel("Accuracy")
-except:
-    traceback.print_exc()
+num_trials = 5
+all_accuracies_noisy = []
+all_accuracies = []
+
+for trial in range(num_trials):
+    print(f"Starting trial {trial+1}")
+    try:
+        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
+        print(iterate_labels_used)
+        all_accuracies_noisy.append(iterate_accuracies_noisy)
+        all_accuracies.append(iterate_accuracies)
+    except:
+        traceback.print_exc()
+
+avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
+std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
+
+avg_accuracies = np.mean(all_accuracies, axis=0)
+std_accuracies = np.std(all_accuracies, axis=0)
+print("Final Accuracy:",avg_accuracies_noisy[-1])
+plt.figure(figsize=(10,6))
+plt.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
+plt.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
+
+plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+            label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
+
+plt.title(f"Sigma = {sigma}, Beta = {beta}")
+plt.legend(loc='lower right')
+
+plt.xlabel("Labels Accessed")
+plt.ylabel("Accuracy")
 
 plt.tight_layout()
 plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
 plt.close()
+
 print("plot should be saved")
 
 
-
-# num_labels_used = np.array(num_labels_used)
-# accuracies = np.array(accuracies)
-
-
-# plt.figure(figsize=(10, 5))
-# plt.plot(num_labels_used, accuracies, label="Test Accuracy")
-# plt.xlabel("Number of Labels used")
-# plt.ylabel("Accuracy")
-# plt.legend()
-# plt.title("Number of Labels used vs Accuracy")
-# plt.text(0.01, 0.95, f'Theta constant: {Theta_constant}', transform=plt.gca().transAxes)
-# plt.text(0.01, 0.90, f'O constant: {O_constant}', transform=plt.gca().transAxes)
-# plt.show()
-
-
-    
-def plot_iterate_accuracies_active_psgd(alpha_value, B_value):
-    y_pred = np.array([bayes_optimal_classifier(x, alpha_value, B_value) for x in x_test])
-
-    bayes_optimal_accuracy = accuracy_score(y_test, y_pred)
-
-    ws = ACTIVE_PSGD(math.ceil(10000), beta)
-    plt.figure(figsize=(10,6))
-
-    plt.plot(iterate_labels_used, iterate_accuracies_noisy, label='Noisy Accuracies', linestyle='-')
-    plt.plot(iterate_labels_used, iterate_accuracies, label='True Accuracies', linestyle=':')
-    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-                label=f'Bayes Optimal Classifier (alpha={alpha_value}, B={B_value})')
-    plt.xlabel('Labels Used')
-    plt.ylabel('Accuracy')
-    plt.title('Accuracy vs Labels Used')
-    plt.legend()
-    plt.show()
 
 
