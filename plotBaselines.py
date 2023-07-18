@@ -261,4 +261,40 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
     plt.close()
 
 
-plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
+def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
+    max_depth_values = [1, 3, 10, 30, 100]
+
+    fig, axs = plt.subplots(2, 3, figsize=(15, 10))  # Adjust to accommodate 5 subplots
+    axs = axs.ravel()  # Flatten the array for easy indexing
+
+    for idx, max_depth in enumerate(max_depth_values):
+        scores = []
+        num_labels = []
+
+        for i in range(1, len(x_train) + 1):
+            try:
+                clf = RandomForestClassifier(max_depth=max_depth, random_state=0)
+                clf.fit(x_train[:i], y_train[:i])
+                num_labels.append(i)
+                y_pred = clf.predict(x_test)
+                acc = accuracy_score(y_test, y_pred)
+                scores.append(acc)
+            except ValueError:
+                continue
+
+        # Plotting on each subplot
+        axs[idx].plot(num_labels, scores)
+        axs[idx].set_title(f'Learning Curve for max_depth={max_depth}')
+        axs[idx].set_xlabel('Number of Training Instances')
+        axs[idx].set_ylabel('Accuracy')
+
+    # Remove extra subplots (since we only need 5)
+    for idx in range(len(max_depth_values), len(axs)):
+        fig.delaxes(axs[idx])
+
+    plt.tight_layout()
+    plt.savefig("Varying_max_depth_RF_Learning_Curve.png")
+    plt.close()
+
+# Call the function with your data
+plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test)
