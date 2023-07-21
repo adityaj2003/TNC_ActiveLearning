@@ -296,5 +296,5 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
     plt.savefig("Varying_max_depth_RF_Learning_Curve.png")
     plt.close()
 
-# Call the function with your data
 plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test)
+plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
