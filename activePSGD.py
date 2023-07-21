@@ -21,12 +21,44 @@ from MakeData import add_noise_single, single_gauss, mixture_gauss, add_noise
 import math
 import traceback
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
+    parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
+    parser.add_argument('--sigma', type=float, default=0.01, help='First input integer')
+    parser.add_argument('--beta', type=float, default=0.003, help='Second input integer')
+    args = parser.parse_args()
+    print(args.sigma)
+
+x_test = np.load('x_test.npy')
+y_test_orig = np.load('y_test_orig.npy')
+y_test = np.load('y_test.npy')
 
 
 
+TRAIN_SET_SIZE = 100000
+d = 2
+epsilon = 0.1
+delta = 0.1
+A = 1
+alpha = 0.5
+O_constant = 50
+num_labels_accessed = 0
+Theta_constant = 10
+
+theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
+sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
+rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
+S = np.log(6 / delta)
 
 
-
+cov1 = np.eye(d)
+cov2 = np.eye(d)
+cov2[0,0] = 8.
+cov2[0,1] = 0.1
+cov2[1,0] = 0.1
+cov2[1,1] = 0.0024
 
 
 def phi_prime_of_sigma_t(w, x):
@@ -38,7 +70,7 @@ def phi_prime_of_sigma_t(w, x):
 
 
 def ACTIVE_FO(w):
-    x,y = single_gauss(d)
+    x,y = single_gauss(d, cov1, cov2)
     y = add_noise_single(x, y, args.alpha, args.B)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
@@ -160,67 +192,31 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
+avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
+std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
+
+avg_accuracies = np.mean(all_accuracies, axis=0)
+std_accuracies = np.std(all_accuracies, axis=0)
+print("Final Accuracy:",avg_accuracies_noisy[-1])
+plt.figure(figsize=(10,6))
+plt.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
+plt.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
+
+plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+            label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
+
+# plt.title(f"Sigma = {sigma}, Beta = {beta}")
+# plt.legend(loc='lower right')
+
+# plt.xlabel("Labels Accessed")
+# plt.ylabel("Accuracy")
+
+# plt.tight_layout()
+# plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
+# plt.close()
+
+# print("plot should be saved")
 
 
 
-if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
-    parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-    parser.add_argument('--sigma', type=float, default=0.01, help='First input integer')
-    parser.add_argument('--beta', type=float, default=0.003, help='Second input integer')
-    args = parser.parse_args()
-    print(args.sigma)
-
-    x_test = np.load('x_test.npy')
-    y_test_orig = np.load('y_test_orig.npy')
-    y_test = np.load('y_test.npy')
-    TRAIN_SET_SIZE = 100000
-    d = 2
-    epsilon = 0.1
-    delta = 0.1
-    A = 1
-    alpha = 0.5
-    O_constant = 50
-    num_labels_accessed = 0
-    Theta_constant = 10
-
-    theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
-    sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
-    rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
-    S = np.log(6 / delta)
-
-
-    cov1 = np.eye(d)
-    cov2 = np.eye(d)
-    cov2[0,0] = 8.
-    cov2[0,1] = 0.1
-    cov2[1,0] = 0.1
-    cov2[1,1] = 0.0024
-    # N = d / (sigma**2 * rho**4)
-    beta = rho**2 * sigma**2 / d
-    avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
-    std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
-
-    avg_accuracies = np.mean(all_accuracies, axis=0)
-    std_accuracies = np.std(all_accuracies, axis=0)
-    print("Final Accuracy:",avg_accuracies_noisy[-1])
-    plt.figure(figsize=(10,6))
-    plt.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
-    plt.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
-
-    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-                label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
-
-    # plt.title(f"Sigma = {sigma}, Beta = {beta}")
-    # plt.legend(loc='lower right')
-
-    # plt.xlabel("Labels Accessed")
-    # plt.ylabel("Accuracy")
-
-    # plt.tight_layout()
-    # plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
-    # plt.close()
-
-    # print("plot should be saved")

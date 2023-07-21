@@ -66,7 +66,7 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     return noisy_labels
 
 
-def single_gauss(d):
+def single_gauss(d, cov1, cov2):
     vecs = np.zeros((1, d))
     if np.random.uniform() > 0.5:
         vecs[0, :] = np.random.multivariate_normal([0]*d, cov1)
