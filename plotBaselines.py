@@ -173,23 +173,29 @@ def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
 bayes_optimal_accuracies = [bayes_optimal_classifier(x, 0.5, 0.3) for x in x_test]
 bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 # plot_TNC_baselines()
+
 def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
-    num_labels = []
-    for i in range(1, 1000):
-        try:
-            clf = LogisticRegression(C=50 / 1000, max_iter=200, penalty='l2', solver='liblinear',
-                                                fit_intercept=False, tol=0.1)
-            clf.fit(x_train[:i], y_train[:i])
-            num_labels.append(i)
-            y_pred = clf.predict(x_test)
-            acc = accuracy_score(y_test, y_pred)
-            scores.append(acc)
-        except ValueError:
-            continue
+    for _ in range(5):  # Run each experiment 5 times
+        score = []
+        for i in range(1, 1000):
+            try:
+                clf = LogisticRegression(C=50 / 1000, max_iter=200, penalty='l2', solver='liblinear',
+                                         fit_intercept=False, tol=0.1)
+                clf.fit(x_train[:i], y_train[:i])
+                y_pred = clf.predict(x_test)
+                acc = accuracy_score(y_test, y_pred)
+                score.append(acc)
+            except ValueError:
+                continue
+        scores.append(score)
 
-    # Plot the learning curve
-    plt.plot(num_labels, scores)
+    # Calculate mean and standard deviation of scores
+    scores_mean = np.mean(scores, axis=0)
+    scores_std = np.std(scores, axis=0)
+
+    # Plot the learning curve with error bars
+    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
     plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
                 label=f'Bayes Optimal Classifier (alpha={0.5}, B={0.3})')
     plt.xlabel('Number of Training Samples')
@@ -198,29 +204,34 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     plt.savefig('LR_learning_curve.png')
     plt.close()
 
+
 def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
-    num_labels = []
-    for i in range(1, 1000):
-        try:
-            clf = RandomForestClassifier(max_depth=5, random_state=0)
-            clf.fit(x_train[:i], y_train[:i])
-            num_labels.append(i)
-            y_pred = clf.predict(x_test)
-            acc = accuracy_score(y_test, y_pred)
-            scores.append(acc)
-        except ValueError:
-            continue
+    for _ in range(5):  # Run each experiment 5 times
+        score = []
+        for i in range(1, 1000):
+            try:
+                clf = RandomForestClassifier(max_depth=5, random_state=0)
+                clf.fit(x_train[:i], y_train[:i])
+                y_pred = clf.predict(x_test)
+                acc = accuracy_score(y_test, y_pred)
+                score.append(acc)
+            except ValueError:
+                continue
+        scores.append(score)
 
-    # Plot the learning curve
-    plt.plot(num_labels, scores)
-    plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-                label=f'Bayes Optimal Classifier (alpha={0.5}, B={0.3})')
+    # Calculate mean and standard deviation of scores
+    scores_mean = np.mean(scores, axis=0)
+    scores_std = np.std(scores, axis=0)
+
+    # Plot the learning curve with error bars
+    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
-    plt.title('Random forest Learning Curve')
+    plt.title('Random Forest Learning Curve')
     plt.savefig('RF_learning_curve.png')
     plt.close()
+
 
 
 # plot_LR_learning_curve(x_train, y_train, x_test, y_test)
@@ -235,23 +246,27 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
     axs = axs.ravel() 
 
     for idx, C in enumerate(C_values):
-        print(C)
         scores = []
-        num_labels = []
+        for _ in range(5):  # Run each experiment 5 times
+            score = []
+            for i in range(1, 1000):
+                try:
+                    clf = LogisticRegression(C=C, max_iter=200, penalty='l2', solver='liblinear',
+                                             fit_intercept=False, tol=0.1)
+                    clf.fit(x_train[:i], y_train[:i])
+                    y_pred = clf.predict(x_test)
+                    acc = accuracy_score(y_test, y_pred)
+                    score.append(acc)
+                except ValueError:
+                    continue
+            scores.append(score)
 
-        for i in range(1, 1000):
-            try:
-                clf = LogisticRegression(C=C, max_iter=200, penalty='l2', solver='liblinear',
-                                         fit_intercept=False, tol=0.1)
-                clf.fit(x_train[:i], y_train[:i])
-                num_labels.append(i)
-                y_pred = clf.predict(x_test)
-                acc = accuracy_score(y_test, y_pred)
-                scores.append(acc)
-            except ValueError:
-                continue
+        # Calculate mean and standard deviation of scores
+        scores_mean = np.mean(scores, axis=0)
+        scores_std = np.std(scores, axis=0)
 
-        axs[idx].plot(num_labels, scores)
+        # Plotting on each subplot with error bars
+        axs[idx].errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
         axs[idx].set_title(f'Learning Curve for C={C}')
         axs[idx].set_xlabel('Number of Training Instances')
         axs[idx].set_ylabel('Accuracy')
@@ -259,7 +274,6 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
     plt.tight_layout()
     plt.savefig("Varying_C_LR_Learning_Curve.png")
     plt.close()
-
 
 def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
     max_depth_values = [1, 3, 10, 30, 100]
@@ -269,21 +283,25 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
 
     for idx, max_depth in enumerate(max_depth_values):
         scores = []
-        num_labels = []
+        for _ in range(5):  # Run each experiment 5 times
+            score = []
+            for i in range(1, 1000):
+                try:
+                    clf = RandomForestClassifier(max_depth=max_depth, random_state=0)
+                    clf.fit(x_train[:i], y_train[:i])
+                    y_pred = clf.predict(x_test)
+                    acc = accuracy_score(y_test, y_pred)
+                    score.append(acc)
+                except ValueError:
+                    continue
+            scores.append(score)
 
-        for i in range(1, 1000):
-            try:
-                clf = RandomForestClassifier(max_depth=max_depth, random_state=0)
-                clf.fit(x_train[:i], y_train[:i])
-                num_labels.append(i)
-                y_pred = clf.predict(x_test)
-                acc = accuracy_score(y_test, y_pred)
-                scores.append(acc)
-            except ValueError:
-                continue
+        # Calculate mean and standard deviation of scores
+        scores_mean = np.mean(scores, axis=0)
+        scores_std = np.std(scores, axis=0)
 
-        # Plotting on each subplot
-        axs[idx].plot(num_labels, scores)
+        # Plotting on each subplot with error bars
+        axs[idx].errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
         axs[idx].set_title(f'Learning Curve for max_depth={max_depth}')
         axs[idx].set_xlabel('Number of Training Instances')
         axs[idx].set_ylabel('Accuracy')
@@ -295,6 +313,7 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
     plt.tight_layout()
     plt.savefig("Varying_max_depth_RF_Learning_Curve.png")
     plt.close()
+
 
 plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test)
 plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
