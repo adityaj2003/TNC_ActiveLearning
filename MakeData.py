@@ -23,26 +23,6 @@ import scipy.stats
 import argparse
 
 
-# Create the parser
-parser = argparse.ArgumentParser()
-
-parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
-parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-
-args = parser.parse_args()
-
-print(args.alpha)
-
-np.random.seed(0)
-
-TRAIN_SET_SIZE = 100000
-d=2
-cov1 = np.eye(d)
-cov2 = np.eye(d)
-cov2[0,0] = 8.
-cov2[0,1] = 0.1
-cov2[1,0] = 0.1
-cov2[1,1] = 0.0024
 
 def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
     total = int(N * (frac + 1))
@@ -108,27 +88,48 @@ def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
 
     return noisy_label
 
-w_star = np.array([1,0])
 
-x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)
-y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
-y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
-np.save('x_train.npy', x_train)
-np.save('x_test.npy', x_test)
-np.save('y_train_orig.npy', y_train_orig)
-np.save('y_test_orig.npy', y_test_orig)
-np.save('y_train.npy', y_train)
-np.save('y_test.npy', y_test)
 
-x1_values = x_train[:, 0]
-x2_values = x_train[:, 1]
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
-# Separate positive and negative instances
-positive_indices = y_train == 1
-negative_indices = y_train == -1
+    parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
+    parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
 
-# plt.scatter(x1_values[positive_indices], x2_values[positive_indices], color='blue', label='+1')
-# plt.scatter(x1_values[negative_indices], x2_values[negative_indices], color='red', label='-1')
-# plt.legend()
-# plt.show()
+    args = parser.parse_args()
 
+    print(args.alpha)
+
+    np.random.seed(0)
+
+    TRAIN_SET_SIZE = 100000
+    d=2
+    cov1 = np.eye(d)
+    cov2 = np.eye(d)
+    cov2[0,0] = 8.
+    cov2[0,1] = 0.1
+    cov2[1,0] = 0.1
+    cov2[1,1] = 0.0024
+    w_star = np.array([1,0])
+
+    x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)
+    y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
+    y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
+    np.save('x_train.npy', x_train)
+    np.save('x_test.npy', x_test)
+    np.save('y_train_orig.npy', y_train_orig)
+    np.save('y_test_orig.npy', y_test_orig)
+    np.save('y_train.npy', y_train)
+    np.save('y_test.npy', y_test)
+
+    x1_values = x_train[:, 0]
+    x2_values = x_train[:, 1]
+
+    # Separate positive and negative instances
+    positive_indices = y_train == 1
+    negative_indices = y_train == -1
+
+    # plt.scatter(x1_values[positive_indices], x2_values[positive_indices], color='blue', label='+1')
+    # plt.scatter(x1_values[negative_indices], x2_values[negative_indices], color='red', label='-1')
+    # plt.legend()
+    # plt.show()
