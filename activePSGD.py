@@ -26,15 +26,15 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
 parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-parser.add_argument('--sigma', type=float, default=0.001, help='First input integer')
-parser.add_argument('--beta', type=float, default=0.001, help='Second input integer')
+parser.add_argument('--sigma', type=float, default=0.01, help='First input integer')
+parser.add_argument('--beta', type=float, default=0.003, help='Second input integer')
 args = parser.parse_args()
-
-
+print(args.sigma)
 
 x_test = np.load('x_test.npy')
 y_test_orig = np.load('y_test_orig.npy')
 y_test = np.load('y_test.npy')
+
 
 
 TRAIN_SET_SIZE = 100000
@@ -87,17 +87,20 @@ def TNC_Learning_New(epsilon, delta):
     iterate_accuracies_noisy = []
     iterate_accuracies = []
     iterate_labels_used = []
-    x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
-    y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
+    print("Initial w:", w1)
     w = [None]*(1000000)
     w[0] = w1
     i = 1
     while i < 1000:
         gi, li = ACTIVE_FO(w[i-1])
+        if (li == 1):
+            print("gi:", gi)
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
+        if (li == 1):
+            print("wi:", w[i])
         predictions = np.dot(x_test, w[i])
         for j in range(0,len(predictions)):
             if predictions[j] < 0.0:
@@ -202,17 +205,17 @@ plt.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':',
 plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
             label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
 
-plt.title(f"Sigma = {sigma}, Beta = {beta}")
-plt.legend(loc='lower right')
+# plt.title(f"Sigma = {sigma}, Beta = {beta}")
+# plt.legend(loc='lower right')
 
-plt.xlabel("Labels Accessed")
-plt.ylabel("Accuracy")
+# plt.xlabel("Labels Accessed")
+# plt.ylabel("Accuracy")
 
-plt.tight_layout()
-plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
-plt.close()
+# plt.tight_layout()
+# plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
+# plt.close()
 
-print("plot should be saved")
+# print("plot should be saved")
 
 
 

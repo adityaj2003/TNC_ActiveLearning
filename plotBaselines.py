@@ -239,7 +239,7 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
         scores = []
         num_labels = []
 
-        for i in range(1, len(x_train) + 1):
+        for i in range(1, 1000):
             try:
                 clf = LogisticRegression(C=C, max_iter=200, penalty='l2', solver='liblinear',
                                          fit_intercept=False, tol=0.1)
@@ -271,7 +271,7 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
         scores = []
         num_labels = []
 
-        for i in range(1, len(x_train) + 1):
+        for i in range(1, 1000):
             try:
                 clf = RandomForestClassifier(max_depth=max_depth, random_state=0)
                 clf.fit(x_train[:i], y_train[:i])
