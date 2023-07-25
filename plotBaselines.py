@@ -180,7 +180,7 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
         score = []
         for i in range(1, 1000):
             try:
-                clf = LogisticRegression(C=50 / 1000, max_iter=200, penalty='l2', solver='liblinear',
+                clf = LogisticRegression(C= 100, max_iter=200, penalty='l2', solver='liblinear',
                                          fit_intercept=False, tol=0.1)
                 clf.fit(x_train[:i], y_train[:i])
                 y_pred = clf.predict(x_test)
@@ -234,9 +234,9 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
 
 
 
-# plot_LR_learning_curve(x_train, y_train, x_test, y_test)
+plot_LR_learning_curve(x_train, y_train, x_test, y_test)
 
-# plot_RF_learning_curve(x_train, y_train, x_test, y_test)
+plot_RF_learning_curve(x_train, y_train, x_test, y_test)
 
 
 def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
@@ -315,5 +315,5 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
     plt.close()
 
 
-plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test)
-plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
+# plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test)
+# plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test)
