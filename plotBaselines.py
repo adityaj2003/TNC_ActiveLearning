@@ -64,6 +64,8 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
 
 TRAIN_SET_SIZE = 1000
 d=2
+alpha = 0.5
+B = 0.3
 cov1 = np.eye(d)
 cov2 = np.eye(d)
 cov2[0,0] = 8.
