@@ -187,7 +187,7 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
                 acc = accuracy_score(y_test, y_pred)
                 score.append(acc)
             except ValueError:
-                score.append(None)
+                score.append(0)
                 continue
         scores.append(score)
 
@@ -218,7 +218,7 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
                 acc = accuracy_score(y_test, y_pred)
                 score.append(acc)
             except ValueError:
-                score.append(None)
+                score.append(0)
                 continue
         scores.append(score)
 
@@ -260,7 +260,7 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
                     acc = accuracy_score(y_test, y_pred)
                     score.append(acc)
                 except ValueError:
-                    score.append(None)
+                    score.append(0)
                     continue
             scores.append(score)
 
@@ -296,7 +296,7 @@ def plot_multiple_RF_learning_curves(x_train, y_train, x_test, y_test):
                     acc = accuracy_score(y_test, y_pred)
                     score.append(acc)
                 except ValueError:
-                    score.append(None)
+                    score.append(0)
                     continue
             scores.append(score)
 
