@@ -17,6 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
+import matplotlib.image as mpimg
 from MakeData import add_noise_single, single_gauss, mixture_gauss, add_noise
 import math
 import traceback
@@ -192,30 +193,48 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
+logistic_image = mpimg.imread('LogisticRegression_Learning_Curve.png')
+random_forest_image = mpimg.imread('RandomForest_Learning_Curve.png')
+
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
 std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
 
 avg_accuracies = np.mean(all_accuracies, axis=0)
 std_accuracies = np.std(all_accuracies, axis=0)
-print("Final Accuracy:",avg_accuracies_noisy[-1])
-plt.figure(figsize=(10,6))
-plt.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
-plt.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
 
-plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+print("Final Accuracy:",avg_accuracies_noisy[-1])
+
+# Create a figure
+fig = plt.figure(figsize=(10,18))
+
+# Subplot for the logistic regression image
+ax1 = fig.add_subplot(3,1,2)
+ax1.imshow(logistic_image)
+ax1.axis('off')
+
+# Subplot for the random forest image
+ax2 = fig.add_subplot(3,1,3)
+ax2.imshow(random_forest_image)
+ax2.axis('off')
+
+# Subplot for the plot
+ax3 = fig.add_subplot(3,1,1)
+
+ax3.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
+ax3.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
+
+ax3.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
             label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
 
-# plt.title(f"Sigma = {sigma}, Beta = {beta}")
-# plt.legend(loc='lower right')
+ax3.set_title(f"Sigma = {sigma}, Beta = {beta}")
+ax3.legend(loc='lower right')
 
-# plt.xlabel("Labels Accessed")
-# plt.ylabel("Accuracy")
+ax3.set_xlabel("Labels Accessed")
+ax3.set_ylabel("Accuracy")
 
-# plt.tight_layout()
-# plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
-# plt.close()
-
-# print("plot should be saved")
+plt.tight_layout()
+plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
+plt.close()
 
 
 
