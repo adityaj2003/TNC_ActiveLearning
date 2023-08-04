@@ -193,8 +193,8 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
-logistic_image = mpimg.imread('LogisticRegression_Learning_Curve.png')
-random_forest_image = mpimg.imread('RandomForest_Learning_Curve.png')
+logistic_image = mpimg.imread('LR_Learning_Curve.png')
+random_forest_image = mpimg.imread('RF_Learning_Curve.png')
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
 std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
