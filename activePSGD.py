@@ -21,6 +21,7 @@ import matplotlib.image as mpimg
 from MakeData import add_noise_single, single_gauss, mixture_gauss, add_noise
 import math
 import traceback
+from torch.utils.tensorboard import SummaryWriter
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -187,7 +188,6 @@ for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
     try:
         iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
-        print(iterate_labels_used)
         all_accuracies_noisy.append(iterate_accuracies_noisy)
         all_accuracies.append(iterate_accuracies)
     except:
@@ -201,6 +201,34 @@ std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
 
 avg_accuracies = np.mean(all_accuracies, axis=0)
 std_accuracies = np.std(all_accuracies, axis=0)
+
+def tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta):
+    writer = SummaryWriter()
+    layout = {
+    "ABCDE": {
+        f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}": ["Multiline", [f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean", f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_minus_std", f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_plus_std"]],
+        f"True_Label_Accuracy_sigma_{sigma}_beta_{beta}": ["Multiline", [f"True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean", f"True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_minus_std", f"True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_plus_std"]],
+    },
+    }
+    writer.add_custom_scalars(layout)
+
+    for i, mean in enumerate(avg_accuracies_noisy):
+        writer.add_scalar(f'Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean', mean, i)
+        writer.add_scalar(f'Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_minus_std', mean - std_accuracies_noisy[i], i)
+        writer.add_scalar(f'Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_plus_std', mean + std_accuracies_noisy[i], i)
+
+    for i, mean in enumerate(avg_accuracies): 
+        writer.add_scalar(f'True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean', mean, i)
+        writer.add_scalar(f'True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_minus_std', mean - std_accuracies[i], i)
+        writer.add_scalar(f'True_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_plus_std', mean + std_accuracies[i], i)
+        
+    writer.flush()
+    writer.close()
+
+
+tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta)
+
+
 
 print("Final Accuracy:",avg_accuracies_noisy[-1])
 
@@ -220,8 +248,17 @@ ax2.axis('off')
 # Subplot for the plot
 ax3 = fig.add_subplot(3,1,1)
 
-ax3.errorbar(iterate_labels_used, avg_accuracies_noisy, std_accuracies_noisy, linestyle='-', marker='o', label='Noisy Accuracies')
-ax3.errorbar(iterate_labels_used, avg_accuracies, std_accuracies, linestyle=':', marker='o', label='True Accuracies')
+l_noisy = ax3.errorbar(iterate_labels_used, avg_accuracies_noisy, linestyle='-', marker='.', label='Noisy Accuracies', color='blue', markersize=2)
+ax3.fill_between(iterate_labels_used, 
+                 avg_accuracies_noisy - std_accuracies_noisy, 
+                 avg_accuracies_noisy + std_accuracies_noisy, 
+                 color='blue', alpha=0.4)
+
+l_true = ax3.errorbar(iterate_labels_used, avg_accuracies,  linestyle=':', marker='.',  label='True Accuracies', color='orange', markersize=2)
+ax3.fill_between(iterate_labels_used, 
+                 avg_accuracies - std_accuracies, 
+                 avg_accuracies + std_accuracies, 
+                 color='orange', alpha=0.4)
 
 ax3.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
             label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
@@ -235,7 +272,5 @@ ax3.set_ylabel("Accuracy")
 plt.tight_layout()
 plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
 plt.close()
-
-
 
 
