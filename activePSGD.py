@@ -91,18 +91,15 @@ def TNC_Learning_New(epsilon, delta):
     iterate_labels_used = []
     w1 = np.random.normal(size=d)
     w1 = w1 / np.linalg.norm(w1)
-    print("Initial w:", w1)
-    w = [None]*(1000000)
+    w = [None]*(1000)
     w[0] = w1
     i = 1
-    while i < 10:
+    while i < 1000:
         gi, li = ACTIVE_FO(w[i-1])
         if (li == 1):
             print("gi:", gi)
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
-        if (li == 1):
-            print("wi:", w[i])
         predictions = np.dot(x_test, w[i])
         for j in range(0,len(predictions)):
             if predictions[j] < 0.0:
@@ -114,7 +111,7 @@ def TNC_Learning_New(epsilon, delta):
             iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
             iterate_labels_used.append(i)
         i += li
-    return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
+    return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used, w[-500:]
 
 
 # N = d / (sigma**2 * rho**4)
@@ -184,10 +181,12 @@ num_trials = 5
 all_accuracies_noisy = []
 all_accuracies = []
 
+suffix_ws = []
 for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
     try:
-        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
+        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used, suffix_w = TNC_Learning_New(epsilon, delta)
+        suffix_ws += suffix_w
         all_accuracies_noisy.append(iterate_accuracies_noisy)
         all_accuracies.append(iterate_accuracies)
     except:
@@ -227,10 +226,16 @@ def tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies,
 
 
 tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta)
-
-
-
-print("Final Accuracy:",avg_accuracies_noisy[-1])
+final_w = np.mean(suffix_ws, axis=0)
+print("Final w:", final_w)
+predictions = np.dot(x_test, final_w)
+for j in range(0,len(predictions)):
+    if predictions[j] < 0.0:
+        predictions[j] = -1
+    else:
+        predictions[j] = 1
+final_accuracy = accuracy_score(y_test, predictions)
+print("Final Accuracy:", final_accuracy)
 
 # Create a figure
 fig = plt.figure(figsize=(10,18))
