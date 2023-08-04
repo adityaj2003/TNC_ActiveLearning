@@ -95,7 +95,7 @@ def TNC_Learning_New(epsilon, delta):
     w = [None]*(1000000)
     w[0] = w1
     i = 1
-    while i < 1000:
+    while i < 10:
         gi, li = ACTIVE_FO(w[i-1])
         if (li == 1):
             print("gi:", gi)
@@ -193,8 +193,8 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
-logistic_image = mpimg.imread('LR_Learning_Curve.png')
-random_forest_image = mpimg.imread('RF_Learning_Curve.png')
+logistic_image = mpimg.imread('LR_learning_curve.png')
+random_forest_image = mpimg.imread('RF_learning_curve.png')
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
 std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
