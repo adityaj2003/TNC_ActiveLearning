@@ -100,7 +100,7 @@ def TNC_Learning_New(epsilon, delta):
             print("gi:", gi)
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
-        predictions = np.dot(x_test, w[i])
+        predictions = np.dot(x_test, np.mean(w[-i//2:i+1], axis=0))
         for j in range(0,len(predictions)):
             if predictions[j] < 0.0:
                 predictions[j] = -1
@@ -111,7 +111,7 @@ def TNC_Learning_New(epsilon, delta):
             iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
             iterate_labels_used.append(i)
         i += li
-    return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used, w[-500:]
+    return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
 
 
 # N = d / (sigma**2 * rho**4)
@@ -181,12 +181,10 @@ num_trials = 5
 all_accuracies_noisy = []
 all_accuracies = []
 
-suffix_ws = []
 for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
     try:
-        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used, suffix_w = TNC_Learning_New(epsilon, delta)
-        suffix_ws += suffix_w
+        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used= TNC_Learning_New(epsilon, delta)
         all_accuracies_noisy.append(iterate_accuracies_noisy)
         all_accuracies.append(iterate_accuracies)
     except:
@@ -226,16 +224,6 @@ def tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies,
 
 
 tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta)
-final_w = np.mean(suffix_ws, axis=0)
-print("Final w:", final_w)
-predictions = np.dot(x_test, final_w)
-for j in range(0,len(predictions)):
-    if predictions[j] < 0.0:
-        predictions[j] = -1
-    else:
-        predictions[j] = 1
-final_accuracy = accuracy_score(y_test, predictions)
-print("Final Accuracy:", final_accuracy)
 
 # Create a figure
 fig = plt.figure(figsize=(10,18))
