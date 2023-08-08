@@ -96,11 +96,9 @@ def TNC_Learning_New(epsilon, delta):
     i = 1
     while i < 1000:
         gi, li = ACTIVE_FO(w[i-1])
-        if (li == 1):
-            print("gi:", gi)
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
-        predictions = np.dot(x_test, np.mean(w[-i//2:i+1], axis=0))
+        predictions = np.dot(x_test, np.mean(w[i//2:i+1], axis=0))
         for j in range(0,len(predictions)):
             if predictions[j] < 0.0:
                 predictions[j] = -1
