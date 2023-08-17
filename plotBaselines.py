@@ -199,6 +199,8 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
 
     # Plot the learning curve with error bars
     plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
+    np.save('LR_scores_mean.npy', scores_mean)
+    np.save('LR_scores_std.npy', scores_std)
     plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
                 label=f'Bayes Optimal Classifier (alpha={0.5}, B={0.3})')
     plt.xlabel('Number of Training Samples')
@@ -227,7 +229,8 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     # Calculate mean and standard deviation of scores
     scores_mean = np.mean(scores, axis=0)
     scores_std = np.std(scores, axis=0)
-
+    np.save('RF_scores_mean.npy', scores_mean)
+    np.save('RF_scores_std.npy', scores_std)
     # Plot the learning curve with error bars
     plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
     plt.xlabel('Number of Training Samples')

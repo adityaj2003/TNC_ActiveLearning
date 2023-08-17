@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
     parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-    parser.add_argument('--sigma', type=float, default=0.01, help='First input integer')
+    parser.add_argument('--sigma', type=float, default=0.001, help='First input integer')
     parser.add_argument('--beta', type=float, default=0.003, help='Second input integer')
     args = parser.parse_args()
     print(args.sigma)
@@ -95,6 +95,7 @@ def TNC_Learning_New(epsilon, delta):
     w[0] = w1
     i = 1
     while i < 1000:
+        print(i)
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -188,8 +189,6 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
-logistic_image = mpimg.imread('LR_learning_curve.png')
-random_forest_image = mpimg.imread('RF_learning_curve.png')
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
 std_accuracies_noisy = np.std(all_accuracies_noisy, axis=0)
@@ -223,22 +222,21 @@ def tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies,
 
 tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta)
 
-# Create a figure
-fig = plt.figure(figsize=(10,18))
+scores_mean_LR = np.load('LR_scores_mean.npy')
+scores_std_LR = np.load('LR_scores_std.npy')
 
-# Subplot for the logistic regression image
-ax1 = fig.add_subplot(3,1,2)
-ax1.imshow(logistic_image)
-ax1.axis('off')
+scores_mean_RF = np.load('RF_scores_mean.npy')
+scores_std_RF = np.load('RF_scores_std.npy')
 
-# Subplot for the random forest image
-ax2 = fig.add_subplot(3,1,3)
-ax2.imshow(random_forest_image)
-ax2.axis('off')
 
-# Subplot for the plot
-ax3 = fig.add_subplot(3,1,1)
+fig = plt.figure(figsize=(10,8))
 
+ax3 = fig.add_subplot(1,1,1)
+
+ax3.errorbar(range(1, 1000), scores_mean_LR, yerr=scores_std_LR, fmt='-', label='LR Learning Curve', color='green', linewidth=0.5)
+ax3.errorbar(range(1, 1000), scores_mean_RF, yerr=scores_std_RF, fmt='-', label='RF Learning Curve', color='purple', linewidth=0.5)
+ax3.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
+                label=f'Bayes Optimal Classifier')
 l_noisy = ax3.errorbar(iterate_labels_used, avg_accuracies_noisy, linestyle='-', marker='.', label='Noisy Accuracies', color='blue', markersize=2)
 ax3.fill_between(iterate_labels_used, 
                  avg_accuracies_noisy - std_accuracies_noisy, 
@@ -263,5 +261,3 @@ ax3.set_ylabel("Accuracy")
 plt.tight_layout()
 plt.savefig(f"plot_sigma_{sigma}_beta_{beta}.png")
 plt.close()
-
-
