@@ -180,12 +180,17 @@ num_trials = 5
 all_accuracies_noisy = []
 all_accuracies = []
 
-#TIME CALCULATION
-start_time = time.time()
-#TIME CALCULATION END
+#TIME CALCULATION CODE
+execution_times = []
+#TIME CALCULATION CODE END
 
 for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
+
+    #TIME CALCULATION CODE
+    start_time = time.time()
+    #TIME CALCULATION CODE END
+    
     try:
         iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
         all_accuracies_noisy.append(iterate_accuracies_noisy)
@@ -193,14 +198,18 @@ for trial in range(num_trials):
     except:
         traceback.print_exc()
 
-elapsed_time = time.time() - start_time
- 
- #TIME TAKEN CALCULATION
-hours = int(elapsed_time // 3600)
-minutes = int((elapsed_time % 3600) // 60)
-seconds = elapsed_time % 60
-print(f"Code took {hours} hours, {minutes} minutes, and {seconds:.2f} seconds to run.")
-#TIME TAKEN CALCULATION END
+    elapsed_time = time.time() - start_time
+
+    # Append elapsed time for this iteration to the list
+    execution_times.append(elapsed_time)
+
+# Plotting
+plt.plot(execution_times, marker='o', linestyle='-')
+plt.xlabel('Iteration')
+plt.ylabel('Execution Time (seconds)')
+plt.title('Execution Time for Each Iteration')
+plt.grid(True)
+plt.savefig("execution_times_plot.png")
 
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
