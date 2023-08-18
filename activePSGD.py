@@ -1,5 +1,6 @@
 import argparse
 import sys
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.pipeline import make_pipeline
@@ -95,7 +96,6 @@ def TNC_Learning_New(epsilon, delta):
     w[0] = w1
     i = 1
     while i < 1000:
-        print(i)
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -180,14 +180,27 @@ num_trials = 5
 all_accuracies_noisy = []
 all_accuracies = []
 
+#TIME CALCULATION
+start_time = time.time()
+#TIME CALCULATION END
+
 for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
     try:
-        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used= TNC_Learning_New(epsilon, delta)
+        iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
         all_accuracies_noisy.append(iterate_accuracies_noisy)
         all_accuracies.append(iterate_accuracies)
     except:
         traceback.print_exc()
+
+elapsed_time = time.time() - start_time
+ 
+ #TIME TAKEN CALCULATION
+hours = int(elapsed_time // 3600)
+minutes = int((elapsed_time % 3600) // 60)
+seconds = elapsed_time % 60
+print(f"Code took {hours} hours, {minutes} minutes, and {seconds:.2f} seconds to run.")
+#TIME TAKEN CALCULATION END
 
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
