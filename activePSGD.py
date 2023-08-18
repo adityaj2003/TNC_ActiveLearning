@@ -85,7 +85,7 @@ def ACTIVE_FO(w):
     else:
         return np.zeros_like(w), 0
 
-
+execution_times = []
 def TNC_Learning_New(epsilon, delta):
     iterate_accuracies_noisy = []
     iterate_accuracies = []
@@ -96,7 +96,7 @@ def TNC_Learning_New(epsilon, delta):
     w[0] = w1
     i = 1
     while i < 1000:
-        start_time_iterate = time.time()
+        start_time = time.time()
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -110,9 +110,17 @@ def TNC_Learning_New(epsilon, delta):
             iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
             iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
             iterate_labels_used.append(i)
-            elapsed_time_iterate = time.time() - start_time_iterate
-            print("Time for", i, ":", elapsed_time_iterate)
+            elapsed_time = time.time() - start_time
+            execution_times.append(elapsed_time)
         i += li
+        if (len(execution_times) == 1000):
+            plt.plot(execution_times, marker='o', linestyle='-')
+            plt.xlabel('Iteration')
+            plt.ylabel('Execution Time (seconds)')
+            plt.title('Execution Time for Each Iteration')
+            plt.grid(True)
+            plt.savefig("execution_times_iterate.png")
+
     return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
 
 
@@ -183,16 +191,8 @@ num_trials = 5
 all_accuracies_noisy = []
 all_accuracies = []
 
-#TIME CALCULATION CODE
-execution_times = []
-#TIME CALCULATION CODE END
-
 for trial in range(num_trials):
     print(f"Starting trial {trial+1}")
-
-    #TIME CALCULATION CODE
-    start_time = time.time()
-    #TIME CALCULATION CODE END
     
     try:
         iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used = TNC_Learning_New(epsilon, delta)
@@ -200,18 +200,6 @@ for trial in range(num_trials):
         all_accuracies.append(iterate_accuracies)
     except:
         traceback.print_exc()
-
-    elapsed_time = time.time() - start_time
-
-    execution_times.append(elapsed_time)
-
-# Plotting
-plt.plot(execution_times, marker='o', linestyle='-')
-plt.xlabel('Iteration')
-plt.ylabel('Execution Time (seconds)')
-plt.title('Execution Time for Each Iteration')
-plt.grid(True)
-plt.savefig("execution_times_plot.png")
 
 
 avg_accuracies_noisy = np.mean(all_accuracies_noisy, axis=0)
