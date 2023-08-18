@@ -96,6 +96,7 @@ def TNC_Learning_New(epsilon, delta):
     w[0] = w1
     i = 1
     while i < 1000:
+        start_time_iterate = time.time()
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -109,6 +110,8 @@ def TNC_Learning_New(epsilon, delta):
             iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
             iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
             iterate_labels_used.append(i)
+            elapsed_time_iterate = time.time() - start_time_iterate
+            print("Time for", i, ":", elapsed_time_iterate)
         i += li
     return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
 
@@ -200,7 +203,6 @@ for trial in range(num_trials):
 
     elapsed_time = time.time() - start_time
 
-    # Append elapsed time for this iteration to the list
     execution_times.append(elapsed_time)
 
 # Plotting
