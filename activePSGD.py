@@ -95,8 +95,8 @@ def TNC_Learning_New(epsilon, delta):
     w = [None]*(1000)
     w[0] = w1
     i = 1
+    start_time = time.time()
     while i < 1000:
-        start_time = time.time()
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -112,6 +112,7 @@ def TNC_Learning_New(epsilon, delta):
             iterate_labels_used.append(i)
             elapsed_time = time.time() - start_time
             execution_times.append(elapsed_time)
+            start_time = time.time()
         i += li
         if (len(execution_times) == 1000):
             plt.plot(execution_times, marker='o', linestyle='-')
