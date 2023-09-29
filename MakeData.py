@@ -88,48 +88,122 @@ def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
 
     return noisy_label
 
+def determine_area(x, w_star, w, alpha):
+    """Determine which area the instance x belongs to."""
+    dot_star = np.dot(x, w_star)
+    dot_w = np.dot(x, w)
+    
+    # Assuming positive class is +1 and negative is -1
+    # Determine area based on dot products
+    if dot_star > 0 and dot_w <= 0:
+        return "A"
+    elif dot_star > 0 and dot_w > 0:
+        return "B" if np.arccos(np.dot(w_star, w)) <= alpha else "C"
+    elif dot_star <= 0 and dot_w <= 0:
+        return "D"
+    return None
+
+def add_described_noise(feature, label, w_star, alpha):
+    # Rotate w_star by angle alpha to get w
+    rot_matrix = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+    w = np.dot(rot_matrix, w_star/np.linalg.norm(w_star))
+
+    noisy_label = label
+    area = determine_area(feature, w_star, w, alpha)
+    if area in ["A", "B"] and np.random.rand() < 0.2:
+        noisy_label = -noisy_label
+    
+    return noisy_label
+
+
+# if __name__ == '__main__':
+#     parser = argparse.ArgumentParser()
+
+#     parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
+#     parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
+
+#     args = parser.parse_args()
+
+#     print(args.alpha)
+
+#     np.random.seed(0)
+
+#     TRAIN_SET_SIZE = 100000
+#     d=2
+#     cov1 = np.eye(d)
+#     cov2 = np.eye(d)
+#     cov2[0,0] = 8.
+#     cov2[0,1] = 0.1
+#     cov2[1,0] = 0.1
+#     cov2[1,1] = 0.0024
+#     w_star = np.array([1,0])
+
+#     x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)
+
+#     alpha = 0.05
+#     h_w_x = np.dot(x_train, w_star)
+
+#     # Compute the probability of flipping each label
+#     eta = 0.5 - np.minimum(1/2,args.B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+
+#     w_star_norm = w_star / np.linalg.norm(w_star)
+#     rot_matrix = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+#     w = np.dot(rot_matrix, w_star_norm)
+
+#     y_train = np.array([add_noise_1bit_compressed_sensing(y, x, w, w_star, alpha, eta[0]) for y, x in zip(y_train_orig, x_train)])
+#     y_test =  np.array([add_noise_1bit_compressed_sensing(y, x, w, w_star, alpha, eta[0]) for y, x in zip(y_test_orig, x_test)])
+#     np.save('x_train.npy', x_train)
+#     np.save('x_test.npy', x_test)
+#     np.save('y_train_orig.npy', y_train_orig)
+#     np.save('y_test_orig.npy', y_test_orig)
+#     np.save('y_train.npy', y_train)
+#     np.save('y_test.npy', y_test)
+
+#     x1_values = x_train[:, 0]
+#     x2_values = x_train[:, 1]
+
+#     # Separate positive and negative instances
+#     positive_indices = y_train == 1
+#     negative_indices = y_train == -1
+
+#     # plt.scatter(x1_values[positive_indices], x2_values[positive_indices], color='blue', label='+1')
+#     # plt.scatter(x1_values[negative_indices], x2_values[negative_indices], color='red', label='-1')
+#     # plt.legend()
+#     # plt.show()
+
+
+
+
+
+####This is the main function for the noise in the 1bit paper in a separate piece of code (because it is a bit different and we want to keep it separate)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    # Set fixed values for alpha and eta
+    alpha = 1.0
+    eta = 0.2
 
-    parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
-    parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-
-    args = parser.parse_args()
-
-    print(args.alpha)
-
+    # Seed for reproducibility
     np.random.seed(0)
 
+    # Define constants
     TRAIN_SET_SIZE = 100000
-    d=2
+    d = 2
     cov1 = np.eye(d)
     cov2 = np.eye(d)
-    cov2[0,0] = 8.
-    cov2[0,1] = 0.1
-    cov2[1,0] = 0.1
-    cov2[1,1] = 0.0024
-    w_star = np.array([1,0])
-
-    x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star = w_star)
-    y_train = add_noise(x_train, y_train_orig, args.alpha, args.B)
-    y_test = add_noise(x_test, y_test_orig, args.alpha, args.B)
+    cov2[0, 0] = 8.
+    cov2[0, 1] = 0.1
+    cov2[1, 0] = 0.1
+    cov2[1, 1] = 0.0024
+    w_star = np.array([1, 0])
+    x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE, w_star=w_star)
+    y_train = [add_described_noise(x, y, w_star, alpha) for x, y in zip(x_train, y_train_orig)]
+    y_test = [add_described_noise(x, y, w_star, alpha) for x, y in zip(x_test, y_test_orig)]
+    y_train = np.array(y_train)
+    y_test = np.array(y_test)
     np.save('x_train.npy', x_train)
     np.save('x_test.npy', x_test)
     np.save('y_train_orig.npy', y_train_orig)
     np.save('y_test_orig.npy', y_test_orig)
     np.save('y_train.npy', y_train)
     np.save('y_test.npy', y_test)
-
-    x1_values = x_train[:, 0]
-    x2_values = x_train[:, 1]
-
-    # Separate positive and negative instances
-    positive_indices = y_train == 1
-    negative_indices = y_train == -1
-
-    # plt.scatter(x1_values[positive_indices], x2_values[positive_indices], color='blue', label='+1')
-    # plt.scatter(x1_values[negative_indices], x2_values[negative_indices], color='red', label='-1')
-    # plt.legend()
-    # plt.show()

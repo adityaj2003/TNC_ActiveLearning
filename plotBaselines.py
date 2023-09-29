@@ -178,7 +178,7 @@ bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 
 def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
-    for _ in range(5):  # Run each experiment 5 times
+    for _ in range(1):  # Run each experiment 5 times
         score = []
         for i in range(1, 1000):
             try:
@@ -212,7 +212,7 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
 
 def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
-    for _ in range(5):  # Run each experiment 5 times
+    for _ in range(1):  # Run each experiment 5 times
         score = []
         for i in range(1, 1000):
             try:

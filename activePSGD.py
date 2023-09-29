@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import matplotlib.image as mpimg
-from MakeData import add_noise_single, single_gauss, mixture_gauss, add_noise
+from MakeData import add_described_noise, determine_area, single_gauss, mixture_gauss, add_noise 
 import math
 import traceback
 from torch.utils.tensorboard import SummaryWriter
@@ -29,15 +29,15 @@ if __name__ == "__main__":
 
     parser.add_argument('--alpha', type=float, default=0.5, help='First input integer')
     parser.add_argument('--B', type=float, default=0.3, help='Second input integer')
-    parser.add_argument('--sigma', type=float, default=0.001, help='First input integer')
-    parser.add_argument('--beta', type=float, default=0.003, help='Second input integer')
+    parser.add_argument('--sigma', type=float, default=0.1, help='First input integer')
+    parser.add_argument('--beta', type=float, default=0.3, help='Second input integer')
     args = parser.parse_args()
     print(args.sigma)
 
 x_test = np.load('x_test.npy')
 y_test_orig = np.load('y_test_orig.npy')
 y_test = np.load('y_test.npy')
-
+x_train = np.load('x_train.npy')
 
 
 TRAIN_SET_SIZE = 100000
@@ -74,7 +74,20 @@ def phi_prime_of_sigma_t(w, x):
 
 def ACTIVE_FO(w):
     x,y = single_gauss(d, cov1, cov2)
-    y = add_noise_single(x, y, args.alpha, args.B)
+    alpha = 0.05
+    w_star = np.array([1,0])
+
+    eta = h_w_x = np.dot(x_train, w_star)
+
+    # Compute the probability of flipping each label
+    eta = 0.5 - np.minimum(1/2,args.B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+
+    w_star_norm = w_star / np.linalg.norm(w_star)
+    rot_matrix = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
+    w_temp = np.dot(rot_matrix, w_star_norm)
+    # y = add_described_noise(y, x, w_temp, w_star, alpha, eta[0])
+
+    y = add_described_noise(x, y, w_star, 1.0)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
     if Z == 1:
@@ -85,7 +98,6 @@ def ACTIVE_FO(w):
     else:
         return np.zeros_like(w), 0
 
-execution_times = []
 def TNC_Learning_New(epsilon, delta):
     iterate_accuracies_noisy = []
     iterate_accuracies = []
@@ -95,8 +107,8 @@ def TNC_Learning_New(epsilon, delta):
     w = [None]*(1000)
     w[0] = w1
     i = 1
-    start_time = time.time()
     while i < 1000:
+        print(i)
         gi, li = ACTIVE_FO(w[i-1])
         vi = w[i-1] - beta*gi
         w[i] = vi / np.linalg.norm(vi)
@@ -110,17 +122,7 @@ def TNC_Learning_New(epsilon, delta):
             iterate_accuracies_noisy.append(accuracy_score(y_test, predictions))
             iterate_accuracies.append(accuracy_score(y_test_orig,predictions))
             iterate_labels_used.append(i)
-            elapsed_time = time.time() - start_time
-            execution_times.append(elapsed_time)
-            start_time = time.time()
         i += li
-        if (len(execution_times) == 1000):
-            plt.plot(execution_times, marker='o', linestyle='-')
-            plt.xlabel('Iteration')
-            plt.ylabel('Execution Time (seconds)')
-            plt.title('Execution Time for Each Iteration')
-            plt.grid(True)
-            plt.savefig("execution_times_iterate.png")
 
     return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
 
@@ -188,7 +190,7 @@ bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 plt.figure(figsize=(10,6))
 sigma = args.sigma
 beta = args.beta
-num_trials = 5
+num_trials = 3
 all_accuracies_noisy = []
 all_accuracies = []
 
@@ -210,7 +212,7 @@ avg_accuracies = np.mean(all_accuracies, axis=0)
 std_accuracies = np.std(all_accuracies, axis=0)
 
 def tensorboard_plot(avg_accuracies_noisy, std_accuracies_noisy, avg_accuracies, std_accuracies, sigma, beta):
-    writer = SummaryWriter()
+    writer = SummaryWriter('runs/plot_'+str(sigma)+'_beta_'+ str(beta))
     layout = {
     "ABCDE": {
         f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}": ["Multiline", [f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean", f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_minus_std", f"Noisy_Label_Accuracy_sigma_{sigma}_beta_{beta}/Mean_plus_std"]],
@@ -248,8 +250,6 @@ ax3 = fig.add_subplot(1,1,1)
 
 ax3.errorbar(range(1, 1000), scores_mean_LR, yerr=scores_std_LR, fmt='-', label='LR Learning Curve', color='green', linewidth=0.5)
 ax3.errorbar(range(1, 1000), scores_mean_RF, yerr=scores_std_RF, fmt='-', label='RF Learning Curve', color='purple', linewidth=0.5)
-ax3.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-                label=f'Bayes Optimal Classifier')
 l_noisy = ax3.errorbar(iterate_labels_used, avg_accuracies_noisy, linestyle='-', marker='.', label='Noisy Accuracies', color='blue', markersize=2)
 ax3.fill_between(iterate_labels_used, 
                  avg_accuracies_noisy - std_accuracies_noisy, 
