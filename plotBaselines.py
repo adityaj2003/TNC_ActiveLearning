@@ -13,12 +13,10 @@ from sklearn.ensemble import RandomForestClassifier
 import json
 from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
-import torch
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
-import math
 
 def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
     total = int(N * (frac + 1))
