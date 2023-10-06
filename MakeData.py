@@ -33,10 +33,8 @@ def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
         else:
             vecs[i, :] = np.random.multivariate_normal([0]*d, cov2)
 
-    # Define split sizes
     N_train = int(0.8 * N)
 
-    # Create datasets
     x_train = vecs[:N_train, :]
     x_test = vecs[N_train:, :]
     
@@ -53,12 +51,9 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     """
     Add noise to the labels according to the Tsybakov noise condition.
     """
-    # Compute the decision boundary
     h_w_x = np.dot(features, w_star)
 
-    # Compute the probability of flipping each label
     p_flip = 0.5 - np.minimum(1/2,B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    # Flip the labels with probability p_flip
     flip = (np.random.rand(len(labels)) < p_flip)
     noisy_labels = labels.copy()
     noisy_labels[flip] = -noisy_labels[flip]
@@ -79,7 +74,6 @@ def single_gauss(d, cov1, cov2):
 
 def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
     h_w_x = np.dot(feature, w_star)
-    # Compute the probability of flipping the label
     p_flip = 0.5 - min(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
     flip = (np.random.rand() < p_flip)
     noisy_label = label
@@ -93,8 +87,6 @@ def determine_area(x, w_star, w, alpha):
     dot_star = np.dot(x, w_star)
     dot_w = np.dot(x, w)
     
-    # Assuming positive class is +1 and negative is -1
-    # Determine area based on dot products
     if dot_star > 0 and dot_w <= 0:
         return "A"
     elif dot_star > 0 and dot_w > 0:
