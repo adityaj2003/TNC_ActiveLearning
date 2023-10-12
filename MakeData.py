@@ -22,6 +22,28 @@ import math
 import scipy.stats
 import argparse
 
+def uniform_ball_distribution_from_gaussian(d, N, w_star=np.array([1, 0]), frac=0.25):
+    total = int(N * (frac + 1))
+
+    # Generate 3D Gaussian random numbers
+    random_points = np.random.randn(total, 3)
+
+    # Normalize each point to have a magnitude of 1 (this projects it onto the surface of a unit sphere)
+    normalized_points = random_points / np.linalg.norm(random_points, axis=1)[:, None]
+
+    # Project onto the unit ball in R^2
+    features = normalized_points[:, :2]
+
+    N_train = int(0.8 * N)
+
+    x_train = features[:N_train, :]
+    x_test = features[N_train:, :]
+
+    y_train = (np.dot(features[:N_train, :], w_star) > 0).astype(int) * 2 - 1
+    y_test = (np.dot(features[N_train:, :], w_star) > 0).astype(int) * 2 - 1
+
+    return x_train, x_test, y_train, y_test
+
 
 
 def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
@@ -71,6 +93,27 @@ def single_gauss(d, cov1, cov2):
     x_train = vecs
     y_train = (vecs[0, 0] > 0).astype(int) * 2 - 1
     return x_train[0], y_train
+
+
+def single_point_uniform_ball():
+    try:
+        random_point = np.random.randn(2)
+        norm = np.linalg.norm(random_point)
+        
+        if norm == 0:
+            raise ValueError("Generated point has zero norm. Regenerating...")
+
+        normalized_point = random_point / norm
+        feature = normalized_point[:2]
+        label = (feature[0] > 0).astype(int) * 2 - 1
+        return feature, label
+
+    except ValueError as e:
+        print(e)
+        return single_point_uniform_ball()
+
+
+
 
 def add_noise_single(feature, label, alpha, B, w_star=np.array([1, 0])):
     h_w_x = np.dot(feature, w_star)

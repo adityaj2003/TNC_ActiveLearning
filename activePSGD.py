@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import matplotlib.image as mpimg
-from MakeData import add_described_noise, determine_area, single_gauss, mixture_gauss, add_noise 
+from MakeData import add_described_noise, determine_area, single_gauss, mixture_gauss, add_noise, single_point_uniform_ball
 import math
 import traceback
 from torch.utils.tensorboard import SummaryWriter

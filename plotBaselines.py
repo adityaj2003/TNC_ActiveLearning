@@ -43,6 +43,26 @@ def mixture_gauss(d, N, w_star = np.array([1,0]),  frac=0.25):
 
 
 
+def uniform_ball_distribution_from_gaussian(d, N, w_star=np.array([1, 0]), frac=0.25):
+    total = int(N * (frac + 1))
+    random_points = np.random.randn(total, 2)
+    normalized_points = random_points / np.linalg.norm(random_points, axis=1)[:, None]
+
+    # Project onto the unit ball in R^2
+    features = normalized_points[:, :2]
+
+    N_train = int(0.8 * N)
+
+    x_train = features[:N_train, :]
+    x_test = features[N_train:, :]
+
+    y_train = (np.dot(features[:N_train, :], w_star) > 0).astype(int) * 2 - 1
+    y_test = (np.dot(features[N_train:, :], w_star) > 0).astype(int) * 2 - 1
+
+    return x_train, x_test, y_train, y_test
+
+
+
 def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     """
     Add noise to the labels according to the Tsybakov noise condition.
@@ -105,7 +125,7 @@ def plot_TNC_baselines():
             acc_rf_true = []
             acc_lr_true = []
             for num_trial in range(NUM_TRIALS):
-                x_train, x_test, y_train_orig, y_test_orig = mixture_gauss(d, TRAIN_SET_SIZE)
+                x_train, x_test, y_train_orig, y_test_orig = uniform_ball_distribution_from_gaussian(d, TRAIN_SET_SIZE)
                 noisy_y_train = add_noise(x_train, y_train_orig, alpha, B)
                 noisy_y_test = add_noise(x_test, y_test_orig, alpha, B)
                 # Random Forest
