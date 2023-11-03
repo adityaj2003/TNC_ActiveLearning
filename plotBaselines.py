@@ -80,7 +80,7 @@ def add_noise(features, labels, alpha, B, w_star=np.array([1, 0])):
     return noisy_labels
 
 
-TRAIN_SET_SIZE = 1000
+TRAIN_SET_SIZE = 100000
 d=2
 alpha = 0.5
 B = 0.3
@@ -183,10 +183,10 @@ def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
         prediction = 1
     else:
         prediction = -1
-    h_w_x = np.dot(x, w_star)
-    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (p_flip > 0.5):
-        prediction = -prediction
+    # h_w_x = np.dot(x, w_star)
+    # p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
+    # if (p_flip > 0.5):
+    #     prediction = -prediction
     return prediction
 
 
@@ -196,13 +196,13 @@ bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
 
 def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores = []
-    for _ in range(1):  # Run each experiment 5 times
+    for k in range(5):
         score = []
         for i in range(1, 1000):
             try:
                 clf = LogisticRegression(C= 100, max_iter=200, penalty='l2', solver='liblinear',
                                          fit_intercept=False, tol=0.1)
-                clf.fit(x_train[:i], y_train[:i])
+                clf.fit(x_train[k*1000:k*1000+i], y_train[k*1000:k*1000+i])
                 y_pred = clf.predict(x_test)
                 acc = accuracy_score(y_test, y_pred)
                 score.append(acc)
@@ -216,7 +216,7 @@ def plot_LR_learning_curve(x_train, y_train, x_test, y_test):
     scores_std = np.std(scores, axis=0)
 
     # Plot the learning curve with error bars
-    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
+    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, linewidth=0.5)
     np.save('LR_scores_mean.npy', scores_mean)
     np.save('LR_scores_std.npy', scores_std)
     plt.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
@@ -250,7 +250,7 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
     np.save('RF_scores_mean.npy', scores_mean)
     np.save('RF_scores_std.npy', scores_std)
     # Plot the learning curve with error bars
-    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, fmt='-o')
+    plt.errorbar(range(1, 1000), scores_mean, yerr=scores_std, linewidth=0.5)
     plt.xlabel('Number of Training Samples')
     plt.ylabel('Accuracy on Test Set')
     plt.title('Random Forest Learning Curve')
@@ -260,7 +260,7 @@ def plot_RF_learning_curve(x_train, y_train, x_test, y_test):
 
 
 plot_LR_learning_curve(x_train, y_train, x_test, y_test)
-
+print("LR done")
 plot_RF_learning_curve(x_train, y_train, x_test, y_test)
 
 
@@ -272,7 +272,7 @@ def plot_multiple_LR_learning_curves(x_train, y_train, x_test, y_test):
 
     for idx, C in enumerate(C_values):
         scores = []
-        for _ in range(5):  # Run each experiment 5 times
+        for _ in range(1):  # Run each experiment 5 times
             score = []
             for i in range(1, 1000):
                 try:

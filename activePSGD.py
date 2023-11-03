@@ -19,7 +19,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from scipy.stats import bernoulli
 import matplotlib.image as mpimg
-from MakeData import add_described_noise, determine_area, single_gauss, mixture_gauss, add_noise, single_point_uniform_ball
+from MakeData import DataGenerator
 import math
 import traceback
 from torch.utils.tensorboard import SummaryWriter
@@ -55,13 +55,20 @@ sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*a
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
 S = np.log(6 / delta)
 
-
 cov1 = np.eye(d)
 cov2 = np.eye(d)
 cov2[0,0] = 8.
 cov2[0,1] = 0.1
 cov2[1,0] = 0.1
 cov2[1,1] = 0.0024
+
+data_gen = DataGenerator(d, TRAIN_SET_SIZE)
+x_train = np.load('x_train.npy')
+x_test = np.load('x_test.npy')
+y_train_orig = np.load('y_train_orig.npy')
+y_test_orig = np.load('y_test_orig.npy')
+y_train = np.load('y_train.npy')
+y_test = np.load('y_test.npy')
 
 
 def phi_prime_of_sigma_t(w, x):
@@ -70,24 +77,12 @@ def phi_prime_of_sigma_t(w, x):
         i = -i
     return abs(np.exp(-i/sigma)/(sigma*(1+np.exp(-i/sigma))**2))
 
-
-
 def ACTIVE_FO(w):
-    x,y = single_gauss(d, cov1, cov2)
-    alpha = 0.05
+    x, y = data_gen.single_point_uniform_ball()
     w_star = np.array([1,0])
-
-    eta = h_w_x = np.dot(x_train, w_star)
-
-    # Compute the probability of flipping each label
-    eta = 0.5 - np.minimum(1/2,args.B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-
-    w_star_norm = w_star / np.linalg.norm(w_star)
-    rot_matrix = np.array([[np.cos(alpha), -np.sin(alpha)], [np.sin(alpha), np.cos(alpha)]])
-    w_temp = np.dot(rot_matrix, w_star_norm)
-    # y = add_described_noise(y, x, w_temp, w_star, alpha, eta[0])
-
-    y = add_described_noise(x, y, w_star, 1.0)
+    eta = np.dot(x_train, w_star) 
+    eta = 0.5 - np.minimum(1/2, args.B * (np.abs(eta)**((1-alpha)/alpha)))
+    y = data_gen.add_described_noise(x, y, 1.424, 0.3)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
     if Z == 1:
@@ -125,6 +120,7 @@ def TNC_Learning_New(epsilon, delta):
         i += li
 
     return iterate_accuracies_noisy, iterate_accuracies, iterate_labels_used
+
 
 
 # N = d / (sigma**2 * rho**4)
@@ -178,15 +174,12 @@ def bayes_optimal_classifier(x,alpha,B,w_star=np.array([1, 0])):
         prediction = 1
     else:
         prediction = -1
-    h_w_x = np.dot(x, w_star)
-    p_flip = 0.5 - np.minimum(1/2, B * (np.abs(h_w_x)**((1-alpha)/alpha)))
-    if (p_flip > 0.5):
-        prediction = -prediction
     return prediction
 
 
 bayes_optimal_accuracies = [bayes_optimal_classifier(x,args.alpha,args.B) for x in x_test]
 bayes_optimal_accuracy = accuracy_score(y_test, bayes_optimal_accuracies)
+print(bayes_optimal_accuracy)
 plt.figure(figsize=(10,6))
 sigma = args.sigma
 beta = args.beta
@@ -263,7 +256,7 @@ ax3.fill_between(iterate_labels_used,
                  color='orange', alpha=0.4)
 
 ax3.axhline(y=bayes_optimal_accuracy, color='r', linestyle='--', 
-            label=f'Bayes Optimal Classifier (alpha={args.alpha}, B={args.B})')
+            label=f'Bayes Optimal Classifier')
 
 ax3.set_title(f"Sigma = {sigma}, Beta = {beta}")
 ax3.legend(loc='lower right')
