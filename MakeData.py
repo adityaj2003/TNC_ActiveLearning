@@ -277,8 +277,8 @@ if __name__ == '__main__':
     np.save('y_train.npy', y_train)
     np.save('y_test.npy', y_test)
 
-    # alphas = np.linspace(0.05, np.pi, 10)
-    # etas = np.arange(0.05, 0.55, 0.05)
+    # alphas = np.linspace(0.05, np.pi, 20)
+    # etas = np.arange(0.05, 0.55, 0.025)
 
     # accuracy_differences = np.zeros((len(alphas), len(etas)))
 
@@ -292,6 +292,7 @@ if __name__ == '__main__':
     #         y_test = [data_gen.add_described_noise(x, y, alpha, eta) for x, y in zip(x_test, y_test_orig)]
     #         y_train = np.array(y_train)
     #         y_test = np.array(y_test)
+    #         #Change such that every round uses different test set for evaluation
     #         for run in range(5):
                 
     #             clf = LogisticRegression(C=100, max_iter=200, penalty='l2', solver='liblinear',

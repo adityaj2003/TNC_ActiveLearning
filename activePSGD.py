@@ -52,6 +52,7 @@ Theta_constant = 10
 
 theta = O_constant * ((1 / np.log2(1 / epsilon))**2) * (epsilon/2)
 sigma = Theta_constant * (1/A)**((1-alpha)/(3*alpha-1)) * theta**((2*alpha)/(3*alpha-1))
+print("calculated sigma", sigma)
 rho = Theta_constant * (1/A)**((2*(1-alpha))/(3*alpha-1)) * theta**((2*(1-alpha))/(3*alpha-1))
 S = np.log(6 / delta)
 
@@ -82,7 +83,7 @@ def ACTIVE_FO(w):
     w_star = np.array([1,0])
     eta = np.dot(x_train, w_star) 
     eta = 0.5 - np.minimum(1/2, args.B * (np.abs(eta)**((1-alpha)/alpha)))
-    y = data_gen.add_described_noise(x, y, 1.424, 0.3)
+    y = data_gen.add_described_noise(x, y, 1.081, 0.3)
     q_wx = sigma * phi_prime_of_sigma_t(w, x)
     Z = bernoulli.rvs(q_wx)
     if Z == 1:
@@ -183,7 +184,7 @@ print(bayes_optimal_accuracy)
 plt.figure(figsize=(10,6))
 sigma = args.sigma
 beta = args.beta
-num_trials = 3
+num_trials = 1
 all_accuracies_noisy = []
 all_accuracies = []
 
